@@ -38,7 +38,7 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-int particleNum = 500;
+int particleNum = 800;
 
 
 int main() {
@@ -72,10 +72,10 @@ int main() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     float vertices[] = {
-        -0.1f, -0.1f, 0.0f,
-         0.1f, -0.1f, 0.0f,
-         0.1f,  0.1f, 0.0f,
-        -0.1f,  0.1f, 0.0f
+        -0.05f, -0.05f, 0.0f,
+         0.05f, -0.05f, 0.0f,
+         0.05f,  0.05f, 0.0f,
+        -0.05f,  0.05f, 0.0f
     };
 
     unsigned int indices[] = {
