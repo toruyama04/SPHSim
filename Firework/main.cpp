@@ -11,6 +11,7 @@
 
 #include <vector>
 #include <random>
+#include <iostream>
 #include <time.h>
 
 struct Particle {
@@ -40,10 +41,7 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-int particleNum = 100000;
-std::random_device rd;
-std::mt19937 generator(rd());
-std::uniform_real_distribution<float> dis(0.0f, 4.0f);
+unsigned int particleNum = 100000;
 
 int main() {
     glfwInit();
@@ -79,39 +77,31 @@ int main() {
     float vertices[] = {
         -0.01f, -0.01f, 0.0f,
          0.01f, -0.01f, 0.0f,
-         0.01f,  0.01f, 0.0f,
-        -0.01f,  0.01f, 0.0f
+        -0.01f,  0.01f, 0.0f,
+         0.01f,  0.01f, 0.0f
     };
     float floorVertices[] = {
         // positions
         -10.0f, 0.0f, -10.0f,
          10.0f, 0.0f, -10.0f,
-         10.0f, 0.0f,  10.0f,
-        -10.0f, 0.0f,  10.0f
+        -10.0f, 0.0f,  10.0f,
+         10.0f, 0.0f,  10.0f
     };
 
-    unsigned int indices[] = {
-        0, 1, 2,
-        2, 3, 0
-    };
 
     std::vector<Particle> particles;
 
     createFirework(particles, glm::vec3(0.0f, 10.0f, 0.0f), particleNum);
 
-    GLuint VAO, VBO, EBO, instanceVBO;
+    unsigned int VAO, VBO, instanceVBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
     glGenBuffers(1, &instanceVBO);
 
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
@@ -124,18 +114,14 @@ int main() {
 
     glBindVertexArray(0);
 
-    unsigned int floorVAO, floorVBO, floorEBO;
+    unsigned int floorVAO, floorVBO;
     glGenVertexArrays(1, &floorVAO);
     glGenBuffers(1, &floorVBO);
-    glGenBuffers(1, &floorEBO);
 
     glBindVertexArray(floorVAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, floorVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(floorVertices), floorVertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, floorEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
@@ -152,22 +138,21 @@ int main() {
     floorShader.use();
     colour = glm::vec3(0.5f, 0.5f, 0.5f);
     floorShader.setVec3("colour", colour);
-
     while (!glfwWindowShouldClose(window))
     {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
-
         processInput(window);
 
         updateParticles(particles, deltaTime);
+
         std::vector<glm::vec3> positions(particles.size());
         for (size_t i = 0; i < particles.size(); ++i) {
             positions[i] = particles[i].position;
         }
         glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(glm::vec3), positions.data());
+        glBufferData(GL_ARRAY_BUFFER, particles.size() * sizeof(glm::vec3), &positions[0], GL_DYNAMIC_DRAW);
 
         glClearColor(0.1f, 0.1f, 0.1f, 0.1f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -181,7 +166,7 @@ int main() {
         particleShader.setMat4("projection", projection);
 
         glBindVertexArray(VAO);
-        glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, particles.size());
+        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, particles.size());
         glBindVertexArray(0);
 
         floorShader.use();
@@ -193,7 +178,7 @@ int main() {
         floorShader.setMat4("projection", projection);
 
         glBindVertexArray(floorVAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         glBindVertexArray(0);
 
         displayFPS(window);
@@ -202,74 +187,29 @@ int main() {
     }
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
     glDeleteBuffers(1, &instanceVBO);
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
 }
 
-
-// keyboard movements for camera
-void processInput(GLFWwindow* window)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera.ProcessKeyboard(FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera.ProcessKeyboard(LEFT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera.ProcessKeyboard(RIGHT, deltaTime);
-}
-
-
-// callback function to change the window dimensions whenever it changes
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    glViewport(0, 0, width, height);
-}
-
-
-// callback function to change camera based on mouse movements
-void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
-{
-    float xpos = static_cast<float>(xposIn);
-    float ypos = static_cast<float>(yposIn);
-    if (firstMouse)
-    {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
-    }
-
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos;
-
-    lastX = xpos;
-    lastY = ypos;
-
-    camera.ProcessMouseMovement(xoffset, yoffset);
-}
-
 // function to update particles
 void updateParticles(std::vector<Particle>& particles, float deltaTime) {
     for (auto& particle : particles) {
-        if (particle.lifetime <= 2.0f) {
+        if (particle.lifetime <= 1.0f) {
             particle.velocity += glm::vec3(0.0f, -0.03f, 0.0f);
-        }
-        else {
-            particle.velocity *= 0.5f * deltaTime;
         }
         particle.position += particle.velocity * deltaTime;
         particle.lifetime -= deltaTime;
         if (particle.lifetime <= 0.0f) {
             particle.position = glm::vec3(0.0f, 10.0f, 0.0f);
-            particle.velocity = glm::sphericalRand(dis(generator));
-            particle.lifetime = 3.5f;
+            float theta = glm::linearRand(0.0f, glm::two_pi<float>());
+            float phi = glm::linearRand(0.0f, glm::pi<float>());
+            float speed = glm::linearRand(1.0f, 1.3f);
+            particle.velocity.x = speed * sin(phi) * cos(theta);
+            particle.velocity.y = speed * sin(phi) * sin(theta);
+            particle.velocity.z = speed * cos(phi);
+            particle.lifetime = glm::linearRand(3.0f, 4.0f);
         }
     }
     /*particles.erase(std::remove_if(particles.begin(), particles.end(),
@@ -281,8 +221,13 @@ void createFirework(std::vector<Particle>& particles, const glm::vec3& position,
     for (int i = 0; i < count; ++i) {
         Particle p;
         p.position = position;
-        p.velocity = glm::sphericalRand(dis(generator)); 
-        p.lifetime = 3.5f; 
+        float theta = glm::linearRand(0.0f, glm::two_pi<float>());
+        float phi = glm::linearRand(0.0f, glm::pi<float>());
+        float speed = glm::linearRand(1.0f, 1.3f);
+        p.velocity.x = speed * sin(phi) * cos(theta);
+        p.velocity.y = speed * sin(phi) * sin(theta);
+        p.velocity.z = speed * cos(phi);
+        p.lifetime = glm::linearRand(3.0f, 4.0f);
         particles.push_back(p);
     }
 }
@@ -309,3 +254,46 @@ void displayFPS(GLFWwindow* window) {
     // Increment frame count
     frameCount++;
 }
+
+void processInput(GLFWwindow* window)
+{
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        camera.ProcessKeyboard(FORWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        camera.ProcessKeyboard(BACKWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camera.ProcessKeyboard(LEFT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camera.ProcessKeyboard(RIGHT, deltaTime);
+}
+
+// callback function to change the window dimensions whenever it changes
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+}
+
+// callback function to change camera based on mouse movements
+void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
+{
+    float xpos = static_cast<float>(xposIn);
+    float ypos = static_cast<float>(yposIn);
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos;
+
+    lastX = xpos;
+    lastY = ypos;
+
+    camera.ProcessMouseMovement(xoffset, yoffset);
+}
+
