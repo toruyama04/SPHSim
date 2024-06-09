@@ -13,6 +13,7 @@
 #include <random>
 #include <iostream>
 #include <time.h>
+#include <algorithm>
 
 struct Particle {
     glm::vec3 position;
@@ -21,10 +22,15 @@ struct Particle {
     glm::vec4 alpha;
 };
 
+typedef struct updated {
+    std::vector<glm::vec3> positions;
+    std::vector<glm::vec4> colours;
+}updated;
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void processInput(GLFWwindow* window);
-void updateParticles(std::vector<Particle>& particles, float deltaTime, glm::vec3 origin);
+updated updateParticles(std::vector<Particle>& particles, float deltaTime, glm::vec3 origin);
 void createFirework(std::vector<Particle>& particles, const glm::vec3& position, int count);
 void displayFPS(GLFWwindow* window);
 
@@ -43,6 +49,7 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 const unsigned int particleNum = 75000;
+const unsigned int fireworkNum = 2;
 
 int main() {
     glfwInit();
@@ -102,38 +109,38 @@ int main() {
     };
 
     std::vector<std::vector<Particle>> fireworks;
-    for (int i = 0; i < 2; ++i) {
+    for (int i = 0; i < fireworkNum; ++i) {
         std::vector<Particle> particles;
         createFirework(particles, fireworkPos[i], particleNum);
         fireworks.push_back(particles);
     }
     
     /* firework particles */
-    std::vector<unsigned int> VAOs(2), VBOs(2), posVBOs(2), colVBOs(2);
-    glGenVertexArrays(2, VAOs.data());
-    glGenBuffers(2, VBOs.data());
-    glGenBuffers(2, posVBOs.data());
-    glGenBuffers(2, colVBOs.data());
+    unsigned int VAO, VBO, posVBO, colVBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &posVBO);
+    glGenBuffers(1, &colVBO);
 
-    for (int i = 0; i < 2; ++i) {
-        glBindVertexArray(VAOs[i]);
-        glBindBuffer(GL_ARRAY_BUFFER, VBOs[i]);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-   
-        glBindBuffer(GL_ARRAY_BUFFER, posVBOs[i]);
-        glBufferData(GL_ARRAY_BUFFER, particleNum * sizeof(glm::vec3), nullptr, GL_STREAM_DRAW);
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-        glVertexAttribDivisor(1, 1);
+    
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        
+    glBindBuffer(GL_ARRAY_BUFFER, posVBO);
+    glBufferData(GL_ARRAY_BUFFER, fireworkNum * particleNum * sizeof(glm::vec3), nullptr, GL_STREAM_DRAW);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribDivisor(1, 1);
 
-        glBindBuffer(GL_ARRAY_BUFFER, colVBOs[i]);
-        glBufferData(GL_ARRAY_BUFFER, particleNum * sizeof(glm::vec4), nullptr, GL_STREAM_DRAW);
-        glEnableVertexAttribArray(2);
-        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-        glVertexAttribDivisor(2, 1);
-    }
+    glBindBuffer(GL_ARRAY_BUFFER, colVBO);
+    glBufferData(GL_ARRAY_BUFFER, fireworkNum * particleNum * sizeof(glm::vec4), nullptr, GL_STREAM_DRAW);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glVertexAttribDivisor(2, 1);
+
 
     /* rocket */
     /*unsigned int rocketVAO, rocketVBO;
@@ -187,40 +194,35 @@ int main() {
         glClearColor(0.1f, 0.1f, 0.1f, 0.1f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-
-        for (int i = 0; i < 2; ++i) {
-            updateParticles(fireworks[i], deltaTime, fireworkPos[i]);
-            std::vector<glm::vec3> positions(fireworks[i].size());
-            std::vector<glm::vec4> colour(fireworks[i].size());
-            for (size_t j = 0; j < fireworks[i].size(); ++j) {
-                positions[j] = fireworks[i][j].position;
-                colour[j] = fireworks[i][j].alpha;
-            }
-            glBindBuffer(GL_ARRAY_BUFFER, posVBOs[i]);
-            glBufferData(GL_ARRAY_BUFFER, particleNum * sizeof(glm::vec3), nullptr, GL_STREAM_DRAW);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, particleNum * sizeof(glm::vec3), &positions[0]);
-
-            glBindBuffer(GL_ARRAY_BUFFER, colVBOs[i]);
-            glBufferData(GL_ARRAY_BUFFER, particleNum * sizeof(glm::vec4), nullptr, GL_STREAM_DRAW);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, particleNum * sizeof(glm::vec4), &colour[0]);
-            /*glBufferData(GL_ARRAY_BUFFER, fireworks[i].size() * sizeof(glm::vec3), &positions[0], GL_DYNAMIC_DRAW);*/
-            
-            particleShader.use();
-            glm::mat4 view = camera.GetViewMatrix();
-            glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-            glm::mat4 model = glm::mat4(1.0f);
-            particleShader.setMat4("model", model);
-            particleShader.setMat4("view", view);
-            particleShader.setMat4("projection", projection);
-            glBindVertexArray(VAOs[i]);
-            glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, fireworks[i].size());
-            glBindVertexArray(0);
+        std::vector<glm::vec3> positions(fireworkNum* particleNum);
+        std::vector<glm::vec4> colour(fireworkNum * particleNum);
+        for (int i = 0; i < fireworkNum; ++i)
+        {
+            updated updatedInfo = updateParticles(fireworks[i], deltaTime, fireworkPos[i]);
+            std::copy(updatedInfo.positions.begin(), updatedInfo.positions.end(), positions.begin() + i * particleNum);
+            std::copy(updatedInfo.colours.begin(), updatedInfo.colours.end(), colour.begin() + i * particleNum);
         }
 
-        floorShader.use();
-        glm::mat4 model = glm::mat4(1.0f);
+        glBindBuffer(GL_ARRAY_BUFFER, posVBO);
+        glBufferData(GL_ARRAY_BUFFER, fireworkNum * particleNum * sizeof(glm::vec3), nullptr, GL_STREAM_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, fireworkNum * particleNum * sizeof(glm::vec3), &positions[0]);
+    
+        glBindBuffer(GL_ARRAY_BUFFER, colVBO);
+        glBufferData(GL_ARRAY_BUFFER, fireworkNum * particleNum * sizeof(glm::vec4), nullptr, GL_STREAM_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, fireworkNum * particleNum * sizeof(glm::vec4), &colour[0]);
+            
+        particleShader.use();
         glm::mat4 view = camera.GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 model = glm::mat4(1.0f);
+        particleShader.setMat4("model", model);
+        particleShader.setMat4("view", view);
+        particleShader.setMat4("projection", projection);
+        glBindVertexArray(VAO);
+        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, particleNum * fireworkNum);
+   
+
+        floorShader.use();
         model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
         model = glm::scale(model, glm::vec3(2.0f));
         floorShader.setMat4("model", model);
@@ -235,10 +237,10 @@ int main() {
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-    glDeleteVertexArrays(2, VAOs.data());
-    glDeleteBuffers(2, VBOs.data());
-    glDeleteBuffers(2, posVBOs.data());
-    glDeleteBuffers(2, colVBOs.data());
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &colVBO);
+    glDeleteBuffers(1, &posVBO);
     glDeleteVertexArrays(1, &floorVAO);
     glDeleteBuffers(1, &floorVBO);
     glfwDestroyWindow(window);
@@ -247,7 +249,8 @@ int main() {
 }
 
 // function to update particles
-void updateParticles(std::vector<Particle>& particles, float deltaTime, glm::vec3 origin) {
+updated updateParticles(std::vector<Particle>& particles, float deltaTime, glm::vec3 origin) {
+    updated ret;
     for (auto& particle : particles) {
         if (particle.lifetime <= 1.0f) {
             particle.velocity += glm::vec3(0.0f, -0.03f, 0.0f);
@@ -266,9 +269,12 @@ void updateParticles(std::vector<Particle>& particles, float deltaTime, glm::vec
             particle.velocity.z = speed * cos(phi);
             particle.lifetime = glm::linearRand(3.0f, 4.0f);
         }
+        ret.positions.push_back(particle.position);
+        ret.colours.push_back(particle.alpha);
     }
     /*particles.erase(std::remove_if(particles.begin(), particles.end(),
         [](const Particle& p) { return p.lifetime <= 0.0f; }), particles.end());*/
+    return ret;
 }
 
 
