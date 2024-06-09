@@ -20,7 +20,14 @@ struct Particle {
     glm::vec3 velocity;
     float lifetime;
     glm::vec4 alpha;
+    int region;
+    float fadeRate;
 };
+
+typedef struct firework {
+    std::vector<Particle> particles;
+    glm::vec3 regionPoints[4];
+}firework;
 
 typedef struct updated {
     std::vector<glm::vec3> positions;
@@ -39,7 +46,7 @@ const unsigned int SCR_WIDTH = 1200;
 const unsigned int SCR_HEIGHT = 720;
 
 // camera
-Camera camera(glm::vec3(0.0f, 0.0f, 25.0f));
+Camera camera(glm::vec3(0.0f, 0.0f, 15.0f));
 float lastX = (float)SCR_WIDTH / 2.0;
 float lastY = (float)SCR_HEIGHT / 2.0;
 bool firstMouse = true;
@@ -48,8 +55,8 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-const unsigned int particleNum = 75000;
-const unsigned int fireworkNum = 2;
+const unsigned int particleNum = 1000;
+const unsigned int fireworkNum = 1;
 
 int main() {
     glfwInit();
@@ -104,15 +111,21 @@ int main() {
     };
 
     glm::vec3 fireworkPos[2] = {
-        glm::vec3(-5.0f, 10.0f, -5.0f),
-        glm::vec3(5.0f, 10.0f, -5.0f)
+        glm::vec3(-5.0f, 8.0f, -5.0f),
+        glm::vec3(5.0f, 8.0f, -5.0f)
     };
 
-    std::vector<std::vector<Particle>> fireworks;
+    std::vector<firework> fireworks;
     for (int i = 0; i < fireworkNum; ++i) {
         std::vector<Particle> particles;
         createFirework(particles, fireworkPos[i], particleNum);
-        fireworks.push_back(particles);
+        firework buf;
+        buf.particles = particles;
+        buf.regionPoints[0] = glm::vec3(0, fireworkPos[i].y + 2.0f, 0);
+        buf.regionPoints[1] = glm::vec3(fireworkPos[i].x + 2.0f, 0, 0);
+        buf.regionPoints[2] = glm::vec3(0, fireworkPos[i].y - 2.0f, 0);
+        buf.regionPoints[3] = glm::vec3(fireworkPos[i].x - 2.0f, 0, 0);
+        fireworks.push_back(buf);
     }
     
     /* firework particles */
@@ -198,7 +211,7 @@ int main() {
         std::vector<glm::vec4> colour(fireworkNum * particleNum);
         for (int i = 0; i < fireworkNum; ++i)
         {
-            updated updatedInfo = updateParticles(fireworks[i], deltaTime, fireworkPos[i]);
+            updated updatedInfo = updateParticles(fireworks[i].particles, deltaTime, fireworkPos[i]);
             std::copy(updatedInfo.positions.begin(), updatedInfo.positions.end(), positions.begin() + i * particleNum);
             std::copy(updatedInfo.colours.begin(), updatedInfo.colours.end(), colour.begin() + i * particleNum);
         }
@@ -251,13 +264,14 @@ int main() {
 // function to update particles
 updated updateParticles(std::vector<Particle>& particles, float deltaTime, glm::vec3 origin) {
     updated ret;
+    /*std::cout << particles[0].position.x << " " << particles[0].position.y << " " << particles[0].position.z << "\n";*/
     for (auto& particle : particles) {
         if (particle.lifetime <= 1.0f) {
-            particle.velocity += glm::vec3(0.0f, -0.03f, 0.0f);
+            particle.velocity += glm::vec3(0.0f, -0.001f, 0.0f);
         }
         particle.position += particle.velocity * deltaTime;
         particle.lifetime -= deltaTime;
-        particle.alpha += glm::vec4(0.0f, 0.0f, 0.0f, -deltaTime);
+        particle.alpha += glm::vec4(0.0f, 0.0f, 0.0f, -particle.fadeRate * deltaTime);
         if (particle.lifetime <= 0.0f) {
             particle.position = origin;
             particle.alpha = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -267,7 +281,7 @@ updated updateParticles(std::vector<Particle>& particles, float deltaTime, glm::
             particle.velocity.x = speed * sin(phi) * cos(theta);
             particle.velocity.y = speed * sin(phi) * sin(theta);
             particle.velocity.z = speed * cos(phi);
-            particle.lifetime = glm::linearRand(3.0f, 4.0f);
+            particle.lifetime = 3.0f;
         }
         ret.positions.push_back(particle.position);
         ret.colours.push_back(particle.alpha);
@@ -275,6 +289,22 @@ updated updateParticles(std::vector<Particle>& particles, float deltaTime, glm::
     /*particles.erase(std::remove_if(particles.begin(), particles.end(),
         [](const Particle& p) { return p.lifetime <= 0.0f; }), particles.end());*/
     return ret;
+}
+
+int regionCheck(const glm::vec3& v, const glm::vec3& origin)
+{
+    float y = v.x - origin.x;
+    float x = v.y - origin.y;
+    float diff = y - x;
+    float sum = y + x;
+    if (diff >= 0 && sum > 0)
+        return 1;
+    else if (diff < 0 && sum >= 0)
+        return 2;
+    else if (diff <= 0 && sum < 0)
+        return 3;
+    else if (diff > 0 && sum <= 0)
+        return 4;
 }
 
 
@@ -289,8 +319,10 @@ void createFirework(std::vector<Particle>& particles, const glm::vec3& position,
         float speed = glm::linearRand(1.0f, 1.3f);
         p.velocity.x = speed * sin(phi) * cos(theta);
         p.velocity.y = speed * sin(phi) * sin(theta);
+        p.region = regionCheck(glm::vec3(p.velocity.x, p.velocity.y, 0.0f), position);
         p.velocity.z = speed * cos(phi);
-        p.lifetime = glm::linearRand(3.0f, 4.0f);
+        p.lifetime = 3.0f;
+        p.fadeRate = 1.0f / p.lifetime;
         particles.push_back(p);
     }
 }
