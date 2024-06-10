@@ -1,0 +1,43 @@
+#version 450 core
+
+layout(local_size_x = 256) in;
+
+struct Particle {
+    vec4 position;
+    vec4 velocity;
+    vec4 alpha;
+    vec4 regionPoints[4];
+    float lifetime;
+    int region;
+    float fadeRate;
+    int padding;
+};
+
+layout(std430, binding = 0) buffer ParticleBuffer {
+	Particle particles[];
+};
+
+
+uniform float deltaTime;
+uniform vec3 grav = vec3(0.0, -5.81, 0.0);
+uniform float maxLife = 3.0;
+
+void main() {
+	uint id = gl_GlobalInvocationID.x;
+	Particle particle = particles[id];
+
+	float lifeR = particle.lifetime / maxLife;
+	float gravE = smoothstep(0.4, 0.0, lifeR);
+
+	vec3 dirTarget = normalize(particle.regionPoints[particle.region].xyz - particle.position.xyz);
+    vec3 attractF = dirTarget * 0.5f;
+    vec3 perpF = cross(dirTarget, vec3(0.0f, 0.0f, 1.0f)) * 0.5f;
+	vec3 gravForce = grav * gravE;
+
+	particle.velocity.xyz += (attractF + perpF + gravForce) * deltaTime;
+	particle.position.xyz += particle.velocity.xyz * deltaTime;
+	particle.lifetime -= deltaTime;
+
+	particle.alpha.w -= particle.fadeRate * deltaTime;
+	particles[id] = particle;
+}
