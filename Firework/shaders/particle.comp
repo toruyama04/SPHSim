@@ -6,11 +6,11 @@ struct Particle {
     vec4 position;
     vec4 velocity;
     vec4 alpha;
-    vec4 regionPoints[4];
+    vec4 regionPoint;
     float lifetime;
-    int region;
     float fadeRate;
-    int padding;
+	float originX;
+    float originY;
 };
 
 layout(std430, binding = 0) buffer ParticleBuffer {
@@ -26,13 +26,21 @@ void main() {
 	uint id = gl_GlobalInvocationID.x;
 	Particle particle = particles[id];
 
+	float theta = (2.0 * 3.141926359 / maxLife) * (maxLife - particle.lifetime);
+	float cosT = cos(theta);
+	float sinT = sin(theta);
+	vec2 trans = particle.regionPoint.xy - vec2(particle.originX, particle.originY);
+	vec2 rotP;
+	rotP.x = cosT * trans.x + sinT * trans.y;
+	rotP.y = -sinT * trans.x + cosT * trans.y;
+	particle.regionPoint.xy = rotP.xy + vec2(particle.originX, particle.originY);
+
 	float lifeR = particle.lifetime / maxLife;
 	float gravE = smoothstep(0.4, 0.0, lifeR);
-
-	vec3 dirTarget = normalize(particle.regionPoints[particle.region].xyz - particle.position.xyz);
-    vec3 attractF = dirTarget * 0.5f;
-    vec3 perpF = cross(dirTarget, vec3(0.0f, 0.0f, 1.0f)) * 0.5f;
+	vec3 dirTarget = normalize(particle.regionPoint.xyz - particle.position.xyz);
+	vec3 attractF = dirTarget * 3.0f;
 	vec3 gravForce = grav * gravE;
+	vec3 perpF = cross(dirTarget, vec3(0.0f, 0.0f, 1.0f)) * 0.5f;
 
 	particle.velocity.xyz += (attractF + perpF + gravForce) * deltaTime;
 	particle.position.xyz += particle.velocity.xyz * deltaTime;

@@ -6,11 +6,11 @@ struct Particle {
     vec4 position;
     vec4 velocity;
     vec4 alpha;
-    vec4 regionPoints[4];
+    vec4 regionPoint;
     float lifetime;
-    int region;
     float fadeRate;
-    int padding;
+    float originX;
+    float originY;
 };
 
 layout(std430, binding = 0) buffer ParticleBuffer {
