@@ -9,43 +9,57 @@ struct Particle {
     vec4 regionPoint;
     float lifetime;
     float fadeRate;
-	float originX;
+    float originX;
     float originY;
 };
 
 layout(std430, binding = 0) buffer ParticleBuffer {
-	Particle particles[];
+    Particle particles[];
 };
 
-
 uniform float deltaTime;
-uniform vec3 grav = vec3(0.0, -5.81, 0.0);
-uniform float maxLife = 3.0;
+uniform vec3 grav;
+uniform float maxLife;
+uniform float dampingFactor;
+uniform float minVelocity;
+uniform float attractionStrength;
 
 void main() {
-	uint id = gl_GlobalInvocationID.x;
-	Particle particle = particles[id];
+    uint id = gl_GlobalInvocationID.x;
+    Particle particle = particles[id];
 
-	float theta = (2.0 * 3.141926359 / maxLife) * (maxLife - particle.lifetime);
-	float cosT = cos(theta);
-	float sinT = sin(theta);
-	vec2 trans = particle.regionPoint.xy - vec2(particle.originX, particle.originY);
-	vec2 rotP;
-	rotP.x = cosT * trans.x + sinT * trans.y;
-	rotP.y = -sinT * trans.x + cosT * trans.y;
-	particle.regionPoint.xy = rotP.xy + vec2(particle.originX, particle.originY);
+    // Update velocity with damping
+    vec3 velocityDiff = particle.velocity.xyz - normalize(particle.velocity.xyz) * minVelocity;
+    particle.velocity.xyz -= velocityDiff * (1.0 - pow(dampingFactor, deltaTime));
 
-	float lifeR = particle.lifetime / maxLife;
-	float gravE = smoothstep(0.4, 0.0, lifeR);
-	vec3 dirTarget = normalize(particle.regionPoint.xyz - particle.position.xyz);
-	vec3 attractF = dirTarget * 3.0f;
-	vec3 gravForce = grav * gravE;
-	vec3 perpF = cross(dirTarget, vec3(0.0f, 0.0f, 1.0f)) * 0.5f;
+    // Gravity effect
+    float lifeR = particle.lifetime / maxLife;
+    // vec3 gravForce = grav * smoothstep(0.8, 0.0, lifeR);
+    // particle.velocity.xyz += gravForce * deltaTime;
 
-	particle.velocity.xyz += (attractF + perpF + gravForce) * deltaTime;
-	particle.position.xyz += particle.velocity.xyz * deltaTime;
-	particle.lifetime -= deltaTime;
+    if (lifeR < 0.75)
+    {
+        vec3 toRegionPoint = particle.regionPoint.xyz - particle.position.xyz;
+        vec3 attractionVelocity = normalize(toRegionPoint) * attractionStrength * particle.originX;
+        attractionVelocity *= smoothstep(0.0, 0.5, lifeR);
+        particle.velocity.xyz += attractionVelocity * deltaTime;
+    }
 
-	particle.alpha.w -= particle.fadeRate * deltaTime;
-	particles[id] = particle;
+
+    // Update position and lifetime
+    particle.position.xyz += particle.velocity.xyz * deltaTime;
+    particle.lifetime -= deltaTime;
+
+    // Fade out
+    if (particle.originX == 1.0f)
+    {
+        particle.alpha.w -= particle.fadeRate * deltaTime;
+    }
+    else {
+        particle.alpha.w -= particle.fadeRate * deltaTime * 1.1;
+    }
+    
+
+    // Write back the updated particle
+    particles[id] = particle;
 }

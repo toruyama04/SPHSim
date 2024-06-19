@@ -1,4 +1,5 @@
 #version 450 core
+layout (location = 0) in vec3 aPos;
 
 out vec4 colour;
 
@@ -23,8 +24,8 @@ uniform mat4 view;
 uniform mat4 projection;
 
 void main() {
-	Particle particle = particles[gl_VertexID];
-    gl_PointSize = 1.0f;
-    gl_Position = projection * view * model * vec4(particle.position.xyz, 1.0f);
+	Particle particle = particles[gl_InstanceID];
+    vec3 quadVertexPosition = aPos + particle.position.xyz;
+    gl_Position = projection * view * model * vec4(quadVertexPosition, 1.0f);
     colour = particle.alpha;
 }
