@@ -8,9 +8,10 @@ struct Particle {
     vec4 alpha;
     vec4 regionPoint;
     float lifetime;
+    float swirl;
     float fadeRate;
-    float originX;
     float originY;
+    vec4 origin;
 };
 
 layout(std430, binding = 0) buffer ParticleBuffer {
@@ -23,6 +24,8 @@ uniform float maxLife;
 uniform float dampingFactor;
 uniform float minVelocity;
 uniform float attractionStrength;
+uniform float spiralAttractionStrength;
+uniform float spiralness;
 
 void main() {
     uint id = gl_GlobalInvocationID.x;
@@ -34,32 +37,41 @@ void main() {
 
     // Gravity effect
     float lifeR = particle.lifetime / maxLife;
-    // vec3 gravForce = grav * smoothstep(0.8, 0.0, lifeR);
-    // particle.velocity.xyz += gravForce * deltaTime;
+    vec3 gravForce = grav * smoothstep(0.5, 0.0, lifeR);
+    particle.velocity.xyz += gravForce * deltaTime;
 
-    if (lifeR < 0.75)
-    {
-        vec3 toRegionPoint = particle.regionPoint.xyz - particle.position.xyz;
-        vec3 attractionVelocity = normalize(toRegionPoint) * attractionStrength * particle.originX;
-        attractionVelocity *= smoothstep(0.0, 0.5, lifeR);
+    // particle to origin calculations
+    vec3 toOrigin = particle.origin.xyz - particle.position.xyz;
+    float distanceToOrigin = max(length(toOrigin), 0.001);
+    vec3 directionToOrigin = normalize(toOrigin);
+
+    // attraction towards origin
+    float attractionOrigin = mix(0.5, 2.0, distanceToOrigin / 4.0f);
+    attractionOrigin = clamp(attractionOrigin, 0.5, 2.0);
+
+    vec3 tangentialComponent = normalize(cross(directionToOrigin, vec3(0.0, 1.0f, 0.0)));
+    vec3 spiralForce = spiralAttractionStrength * directionToOrigin + spiralness * tangentialComponent;
+
+    vec3 toRegionPoint = particle.regionPoint.xyz - particle.position.xyz;
+    vec3 baseVelocity = normalize(toRegionPoint) * attractionStrength * particle.swirl;
+    float attractionFactor = 1.0 - exp(-length(toRegionPoint) / 1.0f);
+    vec3 attractionVelocity = baseVelocity * attractionFactor;
+
+    if (lifeR < 0.65) {
+        particle.velocity.xyz += spiralForce * deltaTime;
         particle.velocity.xyz += attractionVelocity * deltaTime;
     }
-
 
     // Update position and lifetime
     particle.position.xyz += particle.velocity.xyz * deltaTime;
     particle.lifetime -= deltaTime;
 
     // Fade out
-    if (particle.originX == 1.0f)
-    {
+    if (particle.swirl == 1.0f) {
         particle.alpha.w -= particle.fadeRate * deltaTime;
-    }
-    else {
-        particle.alpha.w -= particle.fadeRate * deltaTime * 1.1;
+    } else {
+        particle.alpha.w -= particle.fadeRate * deltaTime * 1.15;
     }
     
-
-    // Write back the updated particle
     particles[id] = particle;
 }

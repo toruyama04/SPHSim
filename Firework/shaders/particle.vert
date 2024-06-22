@@ -9,9 +9,10 @@ struct Particle {
     vec4 alpha;
     vec4 regionPoint;
     float lifetime;
+    float swirl;
     float fadeRate;
-    float originX;
     float originY;
+    vec4 origin;
 };
 
 layout(std430, binding = 0) buffer ParticleBuffer {

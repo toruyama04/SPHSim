@@ -20,9 +20,10 @@ struct Particle {
     glm::vec4 alpha;
     glm::vec4 regionPoint;
     float lifetime;
+    float swirl;
     float fadeRate;
-    float originX;
     float originY;
+    glm::vec4 origin;
 };
 
 typedef struct firework {
@@ -202,6 +203,8 @@ int main() {
         computeShader.setFloat("dampingFactor", 0.005);
         computeShader.setFloat("minVelocity", 0.2);
         computeShader.setFloat("attractionStrength", 0.75f);
+        computeShader.setFloat("spiralness", 1.4);
+        computeShader.setFloat("spiralAttractionStrength", 0.8);
         for (int i = 0; i < fireworkNum; ++i)
         {
             updateParticles(fireworks[i].particles, deltaTime, fireworkPos[i], SSBOs[i]);
@@ -257,19 +260,21 @@ void updateParticles(std::vector<Particle>& particles, float deltaTime, glm::vec
                 particleData[i].position = position;
                 float theta = glm::linearRand(0.0f, glm::two_pi<float   >());
                 float phi = glm::linearRand(0.0f, glm::pi<float>());
-                float speed = glm::linearRand(0.2f, 7.0f);
+                float speed = glm::linearRand(5.0f, 10.0f);
                 particleData[i].velocity.x = speed * sin(phi) * cos(theta);
                 particleData[i].velocity.y = speed * sin(phi) * sin(theta);
                 particleData[i].velocity.z = speed * cos(phi);
                 particleData[i].velocity.w = 1.0f;
                 particleData[i].regionPoint = regionCheck(glm::normalize(particleData[i].velocity), position);
                 if (particleData[i].regionPoint != position)
-                    particleData[i].originX = 1.0f;
+                    particleData[i].swirl = 1.0f;
                 else
-                    particleData[i].originX = 0.0f;
+                    particleData[i].swirl = 0.0f;
                 particleData[i].alpha = glm::vec4(1.0f);
                 particleData[i].lifetime = 3.0f;
+                particleData[i].fadeRate = 1.0f / 3.0f;
                 particleData[i].originY = position.y;
+                particleData[i].origin = position;
             }
         }
         glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
@@ -311,19 +316,20 @@ void createFirework(std::vector<Particle>& particles, const glm::vec4& position,
         p.alpha = glm::vec4(1.0f);
         float theta = glm::linearRand(0.0f, glm::two_pi<float>());
         float phi = glm::linearRand(0.0f, glm::pi<float>());
-        float speed = glm::linearRand(0.2f, 7.0f);
+        float speed = glm::linearRand(5.0f, 10.0f);
         p.velocity.x = speed * sin(phi) * cos(theta);
         p.velocity.y = speed * sin(phi) * sin(theta);
         p.velocity.z = speed * cos(phi);
         p.velocity.w = 1.0f;
         p.lifetime = 3.0f;
-        p.fadeRate = 1.0f / p.lifetime;
         p.regionPoint = regionCheck(glm::normalize(p.velocity), position);
         if (p.regionPoint != position)
-            p.originX = 1.0f;
+            p.swirl = 1.0f;
         else
-            p.originX = 0.0f;
+            p.swirl = 0.0f;
+        p.fadeRate = 1.0f / 3.0f;
         p.originY = position.y;
+        p.origin = position;
         particles.push_back(p);
     }
 }
