@@ -152,6 +152,7 @@
   <ItemGroup>
     <None Include="shaders\floor.frag" />
     <None Include="shaders\floor.vert" />
+    <None Include="shaders\particle.comp" />
     <None Include="shaders\particle.frag" />
     <None Include="shaders\particle.vert" />
     <None Include="shaders\rocket.frag" />
