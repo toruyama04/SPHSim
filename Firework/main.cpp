@@ -13,6 +13,7 @@
 #include <random>
 #include <iostream>
 #include <array>
+#include <windows.h>
 
 struct Particle {
     glm::vec4 position;
@@ -26,14 +27,11 @@ struct Particle {
     glm::vec4 origin;
 };
 
-typedef struct firework {
-    std::vector<Particle> particles;
-}firework;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void processInput(GLFWwindow* window);
-void updateParticles(std::vector<Particle>& particles, float deltaTime, glm::vec4 position, unsigned int SSBO);
+GLuint updateParticles(float deltaTime, unsigned int SSBO, unsigned int ACB);
 void createFirework(std::vector<Particle>& particles, const glm::vec4& position, int count);
 void displayFPS(GLFWwindow* window);
 glm::vec4 regionCheck(const glm::vec4& v, const glm::vec4& origin);
@@ -53,8 +51,10 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 float totaltime = -1.5f;
 
+const unsigned int maxParticles = 70000;
 const unsigned int particleNum = 10000;
 const unsigned int fireworkNum = 1;
+int lastUsedId = 0;
 
 int main() {
     glfwInit();
@@ -121,22 +121,21 @@ int main() {
         glm::vec4(5.0f, 8.0f, -5.0f, 1.0f)
     };
 
-    std::vector<firework> fireworks;
+    // make a vector of all particles
+    std::vector<Particle> particles;
+    particles.reserve(particleNum * fireworkNum);
     for (unsigned int i = 0; i < fireworkNum; i++) {
-        std::vector<Particle> particles;
-        particles.reserve(particleNum);
         createFirework(particles, fireworkPos[i], particleNum);
-        firework buf;
-        buf.particles = particles;
-        fireworks.push_back(buf);
     }
+
     /* firework particles */
-    unsigned int VAO, VBO, EBO;
-    std::vector<unsigned int> SSBOs(fireworkNum);
+    unsigned int VAO, VBO, EBO, SSBO, ACB;
+
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
-    glGenBuffers(fireworkNum, SSBOs.data());
+    glGenBuffers(1, &SSBO);
+    glGenBuffers(1, &ACB);
     
     glBindVertexArray(VAO);
     
@@ -148,19 +147,15 @@ int main() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indexes), indexes, GL_STATIC_DRAW);
 
-    /*glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec4) * particleNum * fireworkNum, &positions[0], GL_DYNAMIC_DRAW);*/
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(Particle) * maxParticles, nullptr, GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(Particle) * particles.size(), particles.data());
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, SSBO);
 
-    for (int i = 0; i < fireworkNum; ++i)
-    {
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBOs[i]);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, fireworks[i].particles.size() * sizeof(Particle), fireworks[i].particles.data(), GL_DYNAMIC_DRAW);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, i, SSBOs[i]);
-        GLint bufferSize;
-        glGetBufferParameteriv(GL_SHADER_STORAGE_BUFFER, GL_BUFFER_SIZE, &bufferSize);
-    }
-
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, ACB);
+    GLuint initial = 0;
+    glBufferData(GL_ATOMIC_COUNTER_BUFFER, sizeof(GLuint), &initial, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, ACB);
 
     /* floor */
     unsigned int floorVAO, floorVBO;
@@ -184,8 +179,6 @@ int main() {
     floorShader.use();
     floorShader.setVec3("colour", glm::vec3(0.5f, 0.5f, 0.5f));
 
-    std::cout << glm::distance(glm::vec3(1.0f, 5.0f, 2.0f), glm::vec3(0.0f, 4.0f, 1.0f)) << "\n";
-
     while (!glfwWindowShouldClose(window))
     {
         float currentFrame = static_cast<float>(glfwGetTime());
@@ -200,16 +193,17 @@ int main() {
         computeShader.setFloat("deltaTime", deltaTime);
         computeShader.setVec3("grav", glm::vec3(0.0f, -5.81f, 0.0));
         computeShader.setFloat("maxLife", 3.0f);
-        computeShader.setFloat("dampingFactor", 0.005);
+        computeShader.setFloat("dampingFactor", 0.0005);
         computeShader.setFloat("minVelocity", 0.2);
         computeShader.setFloat("attractionStrength", 0.75f);
         computeShader.setFloat("spiralness", 1.4);
-        computeShader.setFloat("spiralAttractionStrength", 0.8);
-        for (int i = 0; i < fireworkNum; ++i)
-        {
-            updateParticles(fireworks[i].particles, deltaTime, fireworkPos[i], SSBOs[i]);
-        }
-        
+        computeShader.setFloat("spiralAttractionStrength", 0.4);
+        computeShader.setVec3("acceleration", glm::vec3(1.3f));
+
+        glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, ACB);
+        glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &initial);
+		GLuint numToDraw = updateParticles(deltaTime, SSBO, ACB);
+
         particleShader.use();
         glm::mat4 view = camera.GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
@@ -218,7 +212,7 @@ int main() {
         particleShader.setMat4("view", view);
         particleShader.setMat4("projection", projection);
         glBindVertexArray(VAO);
-        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, particleNum * fireworkNum);
+        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, numToDraw);
 
         floorShader.use();
         model = glm::mat4(1.0f);
@@ -246,13 +240,17 @@ int main() {
 }
 
 // function to update particles
-void updateParticles(std::vector<Particle>& particles, float deltaTime, glm::vec4 position, unsigned int SSBO) {
+GLuint updateParticles(float deltaTime, unsigned int SSBO, unsigned int ACB) {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO);
 
-    glDispatchCompute((particles.size() + 255) / 256, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    glDispatchCompute((maxParticles + 255) / 256, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT);
 
-    Particle* particleData = (Particle*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, particles.size() * sizeof(Particle), GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
+    GLuint numAliveParticles;
+    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, ACB);
+    glGetBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &numAliveParticles);
+
+    /*Particle* particleData = (Particle*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, particles.size() * sizeof(Particle), GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
     if (particleData != NULL)
     {
         for (int i = 0; i < particles.size(); ++i) {
@@ -278,11 +276,12 @@ void updateParticles(std::vector<Particle>& particles, float deltaTime, glm::vec
             }
         }
         glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-    }
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    /*particles.erase(std::remove_if(particles.begin(), particles.end(),
-        [](const Particle& p) { return p.lifetime <= 0.0f; }), particles.end());*/
+    }*/
+
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    return numAliveParticles;
 }
+
 
 glm::vec4 regionCheck(const glm::vec4& v, const glm::vec4& origin)
 {

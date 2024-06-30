@@ -18,25 +18,33 @@ layout(std430, binding = 0) buffer ParticleBuffer {
     Particle particles[];
 };
 
+layout(binding = 0, offset = 0) uniform atomic_uint aliveIndex;
+
 uniform float deltaTime;
-uniform vec3 grav;
+uniform vec3  grav;
 uniform float maxLife;
 uniform float dampingFactor;
 uniform float minVelocity;
 uniform float attractionStrength;
 uniform float spiralAttractionStrength;
 uniform float spiralness;
+uniform vec3 acceleration;
 
 void main() {
     uint id = gl_GlobalInvocationID.x;
     Particle particle = particles[id];
+
+    float lifeR = particle.lifetime / maxLife;
+
+    // add acceleration
+    particle.velocity.xyz += normalize(particle.velocity.xyz) * length(acceleration) * deltaTime * smoothstep(0.0, 0.2, lifeR);
 
     // Update velocity with damping
     vec3 velocityDiff = particle.velocity.xyz - normalize(particle.velocity.xyz) * minVelocity;
     particle.velocity.xyz -= velocityDiff * (1.0 - pow(dampingFactor, deltaTime));
 
     // Gravity effect
-    float lifeR = particle.lifetime / maxLife;
+    
     vec3 gravForce = grav * smoothstep(0.5, 0.0, lifeR);
     particle.velocity.xyz += gravForce * deltaTime;
 
@@ -74,4 +82,17 @@ void main() {
     }
     
     particles[id] = particle;
+
+    if (particle.lifetime >= 0.0)
+    {
+        uint newIndex = atomicCounterIncrement(aliveIndex);
+        particles[newIndex].position = particle.position;
+        particles[newIndex].velocity = particle.velocity;
+        particles[newIndex].alpha = particle.alpha;
+        particles[newIndex].regionPoint = particle.regionPoint;
+        particles[newIndex].lifetime = particle.lifetime;
+        particles[newIndex].swirl  = particle.swirl;
+        particles[newIndex].fadeRate = particle.fadeRate;
+        particles[newIndex].origin = particle.origin;
+    }
 }
