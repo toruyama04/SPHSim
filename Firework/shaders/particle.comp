@@ -37,14 +37,13 @@ void main() {
     float lifeR = particle.lifetime / maxLife;
 
     // add acceleration
-    particle.velocity.xyz += normalize(particle.velocity.xyz) * length(acceleration) * deltaTime * smoothstep(0.0, 0.2, lifeR);
+    // particle.velocity.xyz += normalize(particle.velocity.xyz) * length(acceleration) * deltaTime * smoothstep(1.0, 0.8, lifeR);
 
     // Update velocity with damping
     vec3 velocityDiff = particle.velocity.xyz - normalize(particle.velocity.xyz) * minVelocity;
     particle.velocity.xyz -= velocityDiff * (1.0 - pow(dampingFactor, deltaTime));
 
     // Gravity effect
-    
     vec3 gravForce = grav * smoothstep(0.5, 0.0, lifeR);
     particle.velocity.xyz += gravForce * deltaTime;
 
@@ -56,7 +55,6 @@ void main() {
     // attraction towards origin
     float attractionOrigin = mix(0.5, 2.0, distanceToOrigin / 4.0f);
     attractionOrigin = clamp(attractionOrigin, 0.5, 2.0);
-
     vec3 tangentialComponent = normalize(cross(directionToOrigin, vec3(0.0, 1.0f, 0.0)));
     vec3 spiralForce = spiralAttractionStrength * directionToOrigin + spiralness * tangentialComponent;
 
@@ -66,8 +64,8 @@ void main() {
     vec3 attractionVelocity = baseVelocity * attractionFactor;
 
     if (lifeR < 0.65) {
-        particle.velocity.xyz += spiralForce * deltaTime;
-        particle.velocity.xyz += attractionVelocity * deltaTime;
+       particle.velocity.xyz += spiralForce * deltaTime;
+       particle.velocity.xyz += attractionVelocity * deltaTime;
     }
 
     // Update position and lifetime
@@ -81,18 +79,10 @@ void main() {
         particle.alpha.w -= particle.fadeRate * deltaTime * 1.15;
     }
     
-    particles[id] = particle;
-
-    if (particle.lifetime >= 0.0)
+    if (particle.lifetime > 0.0)
     {
         uint newIndex = atomicCounterIncrement(aliveIndex);
-        particles[newIndex].position = particle.position;
-        particles[newIndex].velocity = particle.velocity;
-        particles[newIndex].alpha = particle.alpha;
-        particles[newIndex].regionPoint = particle.regionPoint;
-        particles[newIndex].lifetime = particle.lifetime;
-        particles[newIndex].swirl  = particle.swirl;
-        particles[newIndex].fadeRate = particle.fadeRate;
-        particles[newIndex].origin = particle.origin;
+        particles[newIndex] = particle;
     }
+    particles[id] = particle;
 }
