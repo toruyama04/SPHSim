@@ -2,87 +2,140 @@
 
 layout(local_size_x = 256) in;
 
-struct Particle {
-    vec4 position;
-    vec4 velocity;
-    vec4 alpha;
-    vec4 regionPoint;
-    float lifetime;
-    float swirl;
-    float fadeRate;
-    float originY;
-    vec4 origin;
+
+layout(std430, binding = 0) buffer Positions {
+    vec4 positions[];
 };
 
-layout(std430, binding = 0) buffer ParticleBuffer {
-    Particle particles[];
+layout(std430, binding = 1) buffer Velocities {
+    vec4 velocity[];
 };
 
-layout(binding = 0, offset = 0) uniform atomic_uint aliveIndex;
+layout(std430, binding = 2) buffer Colours {
+    vec4 colours[];
+};
+
+layout(std430, binding = 3) buffer RegionPoints {
+    vec4 regionPoint[];
+};
+
+layout(std430, binding = 4) buffer Origin {
+    vec4 origin[];
+};
+
+layout(std430, binding = 5) buffer AliveCount {
+    uint count;
+};
 
 uniform float deltaTime;
 uniform vec3  grav;
-uniform float maxLife;
+uniform float trailLife;
 uniform float dampingFactor;
 uniform float minVelocity;
 uniform float attractionStrength;
 uniform float spiralAttractionStrength;
 uniform float spiralness;
-uniform vec3 acceleration;
+uniform float acceleration;
 
-void main() {
+void swap(uint i, uint j)
+{
+    vec4 temp;
+
+    temp = positions[i];
+    positions[i] = positions[j];
+    positions[j] = temp;
+
+    temp = velocity[i];
+    velocity[i] = velocity[j];
+    velocity[j] = temp;
+
+    temp = colours[i];
+    colours[i] = colours[j];
+    colours[j] = temp;
+
+    temp = regionPoint[i];
+    regionPoint[i] = regionPoint[j];
+    regionPoint[j] = temp;
+
+    temp = origin[i];
+    origin[i] = origin[j];
+    origin[j] = temp;
+}
+
+void bitonicSortStep(uint j, uint k) {
+    uint tid = gl_GlobalInvocationID.x;
+    uint ixj = tid ^ j;
+    if (ixj > tid) {
+        bool ascending = (tid & k) == 0;
+        if ((ascending && origin[tid].w > origin[ixj].w) || (!ascending && origin[tid].w < origin[ixj].w)) {
+            swap(tid, ixj);
+        }
+    }
+}
+
+void bitonicSort(uint n) {
+    for (uint k = 2; k <= n; k <<= 1) {
+        for (uint j = k >> 1; j > 0; j >>=1) {
+            bitonicSortStep(j, k);
+            barrier();
+        }
+    }
+}
+
+void updateValues() {
     uint id = gl_GlobalInvocationID.x;
-    Particle particle = particles[id];
 
-    float lifeR = particle.lifetime / maxLife;
-
-    // add acceleration
-    // particle.velocity.xyz += normalize(particle.velocity.xyz) * length(acceleration) * deltaTime * smoothstep(1.0, 0.8, lifeR);
-
-    // Update velocity with damping
-    vec3 velocityDiff = particle.velocity.xyz - normalize(particle.velocity.xyz) * minVelocity;
-    particle.velocity.xyz -= velocityDiff * (1.0 - pow(dampingFactor, deltaTime));
+    float lifeR = origin[id].w / colours[id].x;
+    vec3 normalizedVelocity = normalize(velocity[id].xyz);
 
     // Gravity effect
-    vec3 gravForce = grav * smoothstep(0.5, 0.0, lifeR);
-    particle.velocity.xyz += gravForce * deltaTime;
-
-    // particle to origin calculations
-    vec3 toOrigin = particle.origin.xyz - particle.position.xyz;
-    float distanceToOrigin = max(length(toOrigin), 0.001);
-    vec3 directionToOrigin = normalize(toOrigin);
+    vec3 gravForce = grav * (1.0 - step(0.5, lifeR));
+    velocity[id].xyz += gravForce * deltaTime;
 
     // attraction towards origin
-    float attractionOrigin = mix(0.5, 2.0, distanceToOrigin / 4.0f);
-    attractionOrigin = clamp(attractionOrigin, 0.5, 2.0);
+    vec3 toOrigin = origin[id].xyz - positions[id].xyz;
+    float distanceToOrigin = max(length(toOrigin), 0.001);
+    vec3 directionToOrigin = toOrigin / distanceToOrigin;
+
+    float attractionOrigin = clamp(mix(0.5, 2.0, distanceToOrigin / 4.0f), 0.5, 2.0);
     vec3 tangentialComponent = normalize(cross(directionToOrigin, vec3(0.0, 1.0f, 0.0)));
     vec3 spiralForce = spiralAttractionStrength * directionToOrigin + spiralness * tangentialComponent;
 
-    vec3 toRegionPoint = particle.regionPoint.xyz - particle.position.xyz;
-    vec3 baseVelocity = normalize(toRegionPoint) * attractionStrength * particle.swirl;
-    float attractionFactor = 1.0 - exp(-length(toRegionPoint) / 1.0f);
+    vec3 toRegionPoint = regionPoint[id].xyz - positions[id].xyz;
+    vec3 baseVelocity = normalize(toRegionPoint) * attractionStrength * positions[id].w;
+    float attractionFactor = 1.0 - exp(-length(toRegionPoint));
     vec3 attractionVelocity = baseVelocity * attractionFactor;
 
     if (lifeR < 0.65) {
-       particle.velocity.xyz += spiralForce * deltaTime;
-       particle.velocity.xyz += attractionVelocity * deltaTime;
+        velocity[id].xyz += (spiralForce + attractionVelocity) * deltaTime;
     }
 
     // Update position and lifetime
-    particle.position.xyz += particle.velocity.xyz * deltaTime;
-    particle.lifetime -= deltaTime;
-
-    // Fade out
-    if (particle.swirl == 1.0f) {
-        particle.alpha.w -= particle.fadeRate * deltaTime;
-    } else {
-        particle.alpha.w -= particle.fadeRate * deltaTime * 1.15;
-    }
-    
-    if (particle.lifetime > 0.0)
+    positions[id].xyz += velocity[id].xyz * deltaTime;
+    origin[id].w -= deltaTime;
+    if (origin[id].w > 0)
     {
-        uint newIndex = atomicCounterIncrement(aliveIndex);
-        particles[newIndex] = particle;
+        atomicAdd(count, 1);
     }
-    particles[id] = particle;
+    // Fade out optimization
+    colours[id].w -= velocity[id].w * deltaTime * (positions[id].w == 1.0f ? 1.0 : 1.15);
+
+    float accelerationBoost = 1.0;
+    float dyndampingFactor = 0.0;
+    if (lifeR < 0.9)
+    {
+        accelerationBoost = 0.0;
+        dyndampingFactor = mix(10.0, 5.0, lifeR / 0.8);
+    }
+    velocity[id].xyz += normalizedVelocity * accelerationBoost * acceleration * deltaTime;
+
+    // velocity damping calculation
+    vec3 velocityDiff = velocity[id].xyz - normalizedVelocity * minVelocity;
+    velocity[id].xyz -= velocityDiff * (1.0 - exp(-dyndampingFactor * deltaTime));
+}
+
+void main() {
+    updateValues();
+    barrier();
+    bitonicSort(count);
 }

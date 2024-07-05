@@ -144,9 +144,11 @@
   <ItemGroup>
     <ClCompile Include="glad.c" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ParticleSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
+    <ClInclude Include="ParticleSystem.h" />
     <ClInclude Include="shader.h" />
   </ItemGroup>
   <ItemGroup>
