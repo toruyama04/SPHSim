@@ -117,7 +117,10 @@ void updateValues() {
     {
         atomicAdd(count, 1);
     }
-    // Fade out optimization
+    else {
+        origin[id].w = -1.0;
+    }
+    // Fade out
     colours[id].w -= velocity[id].w * deltaTime * (positions[id].w == 1.0f ? 1.0 : 1.15);
 
     float accelerationBoost = 1.0;

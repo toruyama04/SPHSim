@@ -279,6 +279,7 @@ GLuint updateParticles(float totalTime, GLuint* SSBO, GLuint ACB) {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ACB);
     GLuint* count = (GLuint*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLuint), GL_MAP_READ_BIT);
     GLuint aliveCount = count[0];
+    std::cout << "alive num: " << aliveCount << std::endl;
     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
     /*glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO[3]);
@@ -297,7 +298,7 @@ GLuint updateParticles(float totalTime, GLuint* SSBO, GLuint ACB) {
     {
 	    if (regionPoints[i].w == 1.0f)
 	    {
-            GLuint newIndex = aliveCount + i + 1;
+            GLuint newIndex = aliveCount + i;
             if (newIndex >= maxParticles)
             {
                 std::cerr << "exceeded " << std::endl;
