@@ -106,20 +106,16 @@ void updateValues() {
     float attractionFactor = 1.0 - exp(-length(toRegionPoint));
     vec3 attractionVelocity = baseVelocity * attractionFactor;
 
-    if (lifeR < 0.65) {
+    if (lifeR < 0.65 && regionPoint[id].w == 1.0) {
         velocity[id].xyz += (spiralForce + attractionVelocity) * deltaTime;
     }
 
     // Update position and lifetime
     positions[id].xyz += velocity[id].xyz * deltaTime;
     origin[id].w -= deltaTime;
-    if (origin[id].w > 0)
-    {
-        atomicAdd(count, 1);
-    }
-    else {
-        origin[id].w = -1.0;
-    }
+
+    atomicAdd(count, 1);
+
     // Fade out
     colours[id].w -= velocity[id].w * deltaTime * (positions[id].w == 1.0f ? 1.0 : 1.15);
 
@@ -138,7 +134,11 @@ void updateValues() {
 }
 
 void main() {
-    updateValues();
-    barrier();
+    uint id = gl_GlobalInvocationID.x;
+    if (origin[id].w <= 0.0) {
+        return;
+    }
     bitonicSort(count);
+    barrier();
+    updateValues();
 }

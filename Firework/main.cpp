@@ -13,7 +13,6 @@
 #include <random>
 #include <iostream>
 #include <array>
-#include <windows.h>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -26,13 +25,13 @@ unsigned int setupFloor(float* floorVertices, size_t size);
 
 
 // settings
-const unsigned int SCR_WIDTH = 1920;
-const unsigned int SCR_HEIGHT = 1080;
+constexpr unsigned int SCR_WIDTH = 1920;
+constexpr unsigned int SCR_HEIGHT = 1080;
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 15.0f));
-float lastX = (float)SCR_WIDTH / 2.0;
-float lastY = (float)SCR_HEIGHT / 2.0;
+float lastX = static_cast<float>(SCR_WIDTH) / 2.0f;
+float lastY = static_cast<float>(SCR_HEIGHT) / 2.0f;
 bool firstMouse = true;
 
 // timing
@@ -42,10 +41,9 @@ float totaltime = 0.0f;
 bool done1 = false;
 bool done2 = false;
 
-const unsigned int maxParticles = 80000;
-const unsigned int particleNum = 8000;
-const unsigned int trailNum = 2;
-const unsigned int fireworkNum = 1;
+constexpr unsigned int maxParticles = 80000;
+constexpr unsigned int particleNum = 8000;
+constexpr unsigned int fireworkNum = 1;
 GLuint lastUsedId = 0;
 GLuint SSBOGlobal;
 
@@ -55,10 +53,10 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Firework", NULL, NULL);
-    if (window == NULL)
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Firework", nullptr, nullptr);
+    if (window == nullptr)
     {
-        std::cout << "Failed to create GLFW window" << std::endl;
+        std::cout << "Failed to create GLFW window\n";
         glfwTerminate();
         return -1;
     }
@@ -71,7 +69,7 @@ int main() {
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        std::cout << "Failed to initialize GLAD" << std::endl;
+        std::cout << "Failed to initialize GLAD\n";
         return -1;
     }
 
@@ -126,8 +124,8 @@ int main() {
     std::vector<glm::vec4> regionPoint;
     std::vector<glm::vec4> origin;
 
-    float fade = 1.0 / 3.0;
-    for (int i = 0; i < fireworkNum; i++) {
+    float fade = 1.0f / 3.0f;
+    for (unsigned int i = 0; i < fireworkNum; i++) {
         for (unsigned int j = 0; j < particleNum; ++j) {
             float theta = glm::linearRand(0.0f, glm::two_pi<float>());
             float phi = glm::linearRand(0.0f, glm::pi<float>());
@@ -172,14 +170,8 @@ int main() {
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
     glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
     glEnableVertexAttribArray(0);
-
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ACB);
-    GLuint initialCount = 0;
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint), &initialCount, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, ACB);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indexes), indexes, GL_STATIC_DRAW);
@@ -190,6 +182,12 @@ int main() {
     setupSSBO(SSBO[2], colour, 2, defaultValues);
     setupSSBO(SSBO[3], regionPoint, 3, defaultValues);
     setupSSBO(SSBO[4], origin, 4, defaultValues);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ACB);
+    GLuint initialCount = 0;
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint), &initialCount, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, ACB);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     /*glm::vec4 debug[2];
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO[0]);
@@ -223,11 +221,11 @@ int main() {
         computeShader.setFloat("deltaTime", deltaTime);
         computeShader.setVec3("grav", glm::vec3(0.0f, -2.81f, 0.0));
         computeShader.setFloat("maxLife", 3.0f);
-        computeShader.setFloat("dampingFactor", 13.0);
-        computeShader.setFloat("minVelocity", 0.1);
+        computeShader.setFloat("dampingFactor", 13.0f);
+        computeShader.setFloat("minVelocity", 0.1f);
         computeShader.setFloat("attractionStrength", 0.75f);
-        computeShader.setFloat("spiralness", 1.4);
-        computeShader.setFloat("spiralAttractionStrength", 0.4);
+        computeShader.setFloat("spiralness", 1.4f);
+        computeShader.setFloat("spiralAttractionStrength", 0.4f);
         computeShader.setFloat("acceleration", 25.0f);
         computeShader.setFloat("trailLife", 1.5f);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, ACB);
@@ -279,10 +277,10 @@ GLuint updateParticles(float totalTime, GLuint* SSBO, GLuint ACB) {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ACB);
     GLuint* count = (GLuint*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLuint), GL_MAP_READ_BIT);
     GLuint aliveCount = count[0];
-    std::cout << "alive num: " << aliveCount << std::endl;
+    std::cout << "alive num: " << aliveCount << "\n";
     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
-    /*glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO[3]);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO[3]);
     glm::vec4* regionPoints = (glm::vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, sizeof(glm::vec4) * maxParticles, GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO[0]);
     glm::vec4* positions = (glm::vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, sizeof(glm::vec4) * maxParticles, GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
@@ -292,23 +290,25 @@ GLuint updateParticles(float totalTime, GLuint* SSBO, GLuint ACB) {
     glm::vec4* colours = (glm::vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, sizeof(glm::vec4) * maxParticles, GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO[4]);
     glm::vec4* origin = (glm::vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, sizeof(glm::vec4) * maxParticles, GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
-    float fadeRate = 1.0 / 1.5;
-    float trailVelocityFactor = 0.5f;
-	for (int i = 0; i < aliveCount; ++i)
+    float fadeRate = 1.0f / 1.5f;
+    
+	for (unsigned int i = 0; i < aliveCount; i += 400)
     {
-	    if (regionPoints[i].w == 1.0f)
+        // is a firework particle?
+	    if (regionPoints[i].w == 1.0f && origin[i].w > 0.5f)
 	    {
             GLuint newIndex = aliveCount + i;
             if (newIndex >= maxParticles)
             {
-                std::cerr << "exceeded " << std::endl;
+                std::cerr << "exceeded\n";
                 break;
             }
+			float trailVelocityFactor = 0.3f;
             regionPoints[newIndex] = glm::vec4(regionPoints[i].x, regionPoints[i].y, regionPoints[i].z, 0.0f);
             positions[newIndex] = positions[i];
             velocity[newIndex] = glm::vec4(velocity[i].x * trailVelocityFactor, velocity[i].y * trailVelocityFactor, velocity[i].z * trailVelocityFactor, fadeRate);
-            origin[newIndex] = glm::vec4(origin[i].x, origin[i].y, origin[i].z, 1.5f);
-            colours[newIndex] = glm::vec4(1.5f, 1.0f, 1.0f, 1.0f);
+            origin[newIndex] = glm::vec4(origin[i].x, origin[i].y, origin[i].z, 1.0f);
+            colours[newIndex] = glm::vec4(1.0f, 1.0f, 1.0f, colours[i].w);
 	    }
     }
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO[3]);
@@ -320,7 +320,7 @@ GLuint updateParticles(float totalTime, GLuint* SSBO, GLuint ACB) {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO[2]);
     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO[4]);
-    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);*/
+    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
     return aliveCount;
 }
 
@@ -335,12 +335,10 @@ glm::vec4 regionCheck(const glm::vec4& v, const glm::vec4& origin)
         glm::vec4(origin.x + 1.0f, origin.y, origin.z - 1.0f, 1.0f),
         glm::vec4(origin.x - 1.0f, origin.y, origin.z + 1.0f, 1.0f)
     };
-    float distance;
-    float angle;
     for (const auto& point : regionPoints)
     {
-        distance = glm::distance(origin, point);
-        angle = glm::asin(0.85 / distance);
+        float distance = glm::distance(origin, point);
+        float angle = glm::asin(0.85f / distance);
         if (glm::dot(v, glm::normalize(point - origin)) > cos(angle))
         {
             return point;
@@ -386,7 +384,7 @@ void displayFPS(GLFWwindow* window) {
     if (elapsedSeconds >= 1.0) {
         double fps = static_cast<double>(frameCount) / elapsedSeconds;
         // Print FPS to console
-        std::cout << "FPS: " << fps << std::endl;
+        std::cout << "FPS: " << fps << "\n";
 
         // Reset frame count and timer
         frameCount = 0;

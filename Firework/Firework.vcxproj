@@ -148,7 +148,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
-    <ClInclude Include="ParticleSystem.h" />
     <ClInclude Include="shader.h" />
   </ItemGroup>
   <ItemGroup>
