@@ -24,6 +24,12 @@
     <ClCompile Include="ParticleSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="utils.h">
+      <Filter>Header Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader.h">
@@ -40,6 +46,8 @@
     <None Include="shaders\particle.vert" />
     <None Include="shaders\rocket.frag" />
     <None Include="shaders\rocket.vert" />
-    <None Include="shaders\particle.comp" />
+    <None Include="shaders\particleUpdate.comp" />
+    <None Include="shaders\particleSort.comp" />
+    <None Include="shaders\particleTrail.comp" />
   </ItemGroup>
 </Project>

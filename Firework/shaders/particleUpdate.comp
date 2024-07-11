@@ -1,0 +1,86 @@
+#version 450 core
+
+layout(local_size_x = 256) in;
+
+
+layout(std430, binding = 0) buffer Positions {
+    vec4 positions[];
+};
+
+layout(std430, binding = 1) buffer Velocities {
+    vec4 velocity[];
+};
+
+layout(std430, binding = 2) buffer Colours {
+    vec4 colours[];
+};
+
+layout(std430, binding = 3) buffer RegionPoints {
+    vec4 regionPoint[];
+};
+
+layout(std430, binding = 4) buffer Origin {
+    vec4 origin[];
+};
+
+
+uniform float deltaTime;
+uniform vec3  grav;
+uniform float dampingFactor;
+uniform float minVelocity;
+uniform float attractionStrength;
+uniform float spiralAttractionStrength;
+uniform float spiralness;
+uniform float acceleration;
+
+
+void main() {
+    uint id = gl_GlobalInvocationID.x;
+    origin[id].w -= deltaTime;
+    if (origin[id].w <= 0.0) {
+        origin[id].w = -1.0;
+        return;
+    }
+    float lifeR = origin[id].w / colours[id].x;
+    vec3 particleDirection = normalize(velocity[id].xyz);
+
+    // Gravity effect
+    float gravForce = 1.0 - lifeR;
+    velocity[id].xyz += gravForce * deltaTime * grav;
+
+    // Fade out
+    colours[id].w -= velocity[id].w * deltaTime;
+
+    // spiral attraction towards origin
+    vec3 particleToOrigin = origin[id].xyz - positions[id].xyz;
+    float distanceToOrigin = max(length(particleToOrigin), 0.001);
+    vec3 directionToOrigin = particleToOrigin / distanceToOrigin;
+    vec3 tangentialComponent = normalize(cross(directionToOrigin, vec3(0.0, 1.0f, 0.0)));
+    vec3 spiralForce = spiralAttractionStrength * directionToOrigin + spiralness * tangentialComponent;
+
+    // attraction towards regionPoints
+    vec3 toRegionPoint = regionPoint[id].xyz - positions[id].xyz;
+    vec3 baseVelocity = normalize(toRegionPoint) * attractionStrength * positions[id].w;
+    float attractionFactor = 1.0 - exp(-length(toRegionPoint));
+    vec3 regionPointVelocity = baseVelocity * attractionFactor;
+
+    if (lifeR < 0.75) {
+        velocity[id].xyz += (spiralForce + regionPointVelocity) * deltaTime;
+    }
+
+    float accelerationBoost = 1.0;
+    float dyndampingFactor = 0.0;
+    if (lifeR < 0.9)
+    {
+        accelerationBoost = 0.0;
+        dyndampingFactor = mix(10.0, 5.0, lifeR / 0.8);
+    }
+    velocity[id].xyz += particleDirection * accelerationBoost * acceleration * deltaTime;
+
+    // velocity damping calculation
+    vec3 velocityDiff = velocity[id].xyz - particleDirection * minVelocity;
+    velocity[id].xyz -= velocityDiff * (1.0 - exp(-dyndampingFactor * deltaTime));
+
+    // Update position and lifetime
+    positions[id].xyz += velocity[id].xyz * deltaTime;
+}

@@ -1,0 +1,66 @@
+#version 450 core
+
+layout(local_size_x = 256) in;
+
+
+layout(std430, binding = 0) buffer Positions {
+    vec4 positions[];
+};
+
+layout(std430, binding = 1) buffer Velocities {
+    vec4 velocity[];
+};
+
+layout(std430, binding = 2) buffer Colours {
+    vec4 colours[];
+};
+
+layout(std430, binding = 3) buffer RegionPoints {
+    vec4 regionPoint[];
+};
+
+layout(std430, binding = 4) buffer Origin {
+    vec4 origin[];
+};
+
+
+uniform int maxParticle = 65536;
+
+void bitonicSort(int id) {
+    for (int k = 1; k < maxParticle; k *= 2) {
+        for (int j = k; j > 0; j /= 2) {
+            int ixj = id ^ j;
+            
+            if (ixj > id) {
+                if (((id & k) == 0 && origin[id].w > origin[ixj].w) ||
+                    ((id & k) != 0 && origin[id].w < origin[ixj].w)) {
+                    vec4 tempOrigin = origin[id];
+                    origin[id] = origin[ixj];
+                    origin[ixj] = tempOrigin;
+
+                    vec4 tempPositions = positions[id];
+                    positions[id] = positions[ixj];
+                    positions[ixj] = tempPositions;
+
+                    vec4 tempVelocity = velocity[id];
+                    velocity[id] = velocity[ixj];
+                    velocity[ixj] = tempVelocity;
+
+                    vec4 tempColours = colours[id];
+                    colours[id] = colours[ixj];
+                    colours[ixj] = tempColours;
+
+                    vec4 tempRegionPoints = regionPoint[id];
+                    regionPoint[id] = regionPoint[ixj];
+                    regionPoint[ixj] = tempRegionPoints;
+                }
+            }
+            barrier();
+        }
+    }
+}
+
+void main() {
+    int id = int(gl_GlobalInvocationID.x);
+    bitonicSort(id);
+}

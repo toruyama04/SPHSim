@@ -145,6 +145,8 @@
     <ClCompile Include="glad.c" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ParticleSystem.cpp" />
+    <ClCompile Include="utils.cpp" />
+    <ClCompile Include="utils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
@@ -153,9 +155,11 @@
   <ItemGroup>
     <None Include="shaders\floor.frag" />
     <None Include="shaders\floor.vert" />
-    <None Include="shaders\particle.comp" />
     <None Include="shaders\particle.frag" />
     <None Include="shaders\particle.vert" />
+    <None Include="shaders\particleSort.comp" />
+    <None Include="shaders\particleTrail.comp" />
+    <None Include="shaders\particleUpdate.comp" />
     <None Include="shaders\rocket.frag" />
     <None Include="shaders\rocket.vert" />
   </ItemGroup>
