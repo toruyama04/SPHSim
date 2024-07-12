@@ -23,6 +23,12 @@ layout(std430, binding = 4) buffer Origin {
     vec4 origin[];
 };
 
+layout(std430, binding = 6) buffer Flags {
+    int flags[];
+};
+
+layout(binding = 0, offset = 0) uniform atomic_uint aliveCount;
+
 
 uniform float deltaTime;
 uniform vec3  grav;
@@ -38,7 +44,7 @@ void main() {
     uint id = gl_GlobalInvocationID.x;
     origin[id].w -= deltaTime;
     if (origin[id].w <= 0.0) {
-        origin[id].w = -1.0;
+        flags[id] = 0;
         return;
     }
     float lifeR = origin[id].w / colours[id].x;
@@ -83,4 +89,5 @@ void main() {
 
     // Update position and lifetime
     positions[id].xyz += velocity[id].xyz * deltaTime;
+    atomicCounterIncrement(aliveCount);
 }

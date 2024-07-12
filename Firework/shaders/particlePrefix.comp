@@ -1,0 +1,56 @@
+#version 450 core
+
+layout(local_size_x = 1024) in;
+
+layout(std430, binding = 6) buffer Flags {
+    int flags[];
+};
+
+shared int temp[1024];
+
+uniform int maxParticle = 65536;
+
+void main() {
+    uint globalIndex = gl_GlobalInvocationID.x;
+    uint localIndex = gl_LocalInvocationID.x;
+
+    // Load data into shared memory
+    temp[localIndex] = flags[globalIndex];
+    barrier();
+
+    // Up-sweep (reduction) phase
+    for (uint offset = 1; offset < 1024; offset *= 2) {
+        int t = 0;
+        if (localIndex >= offset) {
+            t = temp[localIndex - offset];
+        }
+        barrier();
+        if (localIndex >= offset) {
+            temp[localIndex] += t;
+        }
+        barrier();
+    }
+
+    // Clear the last element for exclusive scan
+    if (localIndex == 1023) {
+        temp[1023] = 0;
+    }
+    barrier();
+
+    // Down-sweep phase
+    for (uint offset = 512; offset > 0; offset /= 2) {
+        int t = 0;
+        if (localIndex >= offset) {
+            t = temp[localIndex - offset];
+        }
+        barrier();
+        if (localIndex >= offset) {
+            temp[localIndex - offset] = temp[localIndex];
+            temp[localIndex] += t;
+        }
+        barrier();
+    }
+
+    // Write the result back to global memory
+    flags[globalIndex] = temp[localIndex];
+}

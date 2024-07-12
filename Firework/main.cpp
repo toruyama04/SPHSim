@@ -19,7 +19,7 @@
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void processInput(GLFWwindow* window);
-void updateParticles(Shader* compShader, GLuint* SSBO);
+void updateParticles(Shader* compShader, GLuint* SSBO, GLuint ACB, GLuint flags);
 void displayFPS(GLFWwindow* window);
 glm::vec4 regionCheck(const glm::vec4& v, const glm::vec4& origin);
 void setupSSBO(unsigned int buf, std::vector<glm::vec4>& type, int bindPoint, std::vector<glm::vec4>& defaultValues);
@@ -44,7 +44,6 @@ float lastFrame = 0.0f;
 constexpr unsigned int maxParticles = 65536;
 constexpr unsigned int particleNum = 4096;
 constexpr unsigned int fireworkNum = 1;
-int aliveCount = 4096;
 
 int main() {
     GLFWwindow* window = initialiseOpenGL();
@@ -85,13 +84,15 @@ int main() {
     }
 
     /* firework particles */
-    unsigned int VAO, VBO, EBO, SSBO[5], DIB;
+    unsigned int VAO, VBO, EBO, SSBO[5], DIB, ACB, flags;
 
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
+    glGenBuffers(1, &ACB);
     glGenBuffers(5, SSBO);
     glGenBuffers(1, &DIB);
+    glGenBuffers(1, &flags);
     
     glBindVertexArray(VAO);
 
@@ -110,7 +111,6 @@ int main() {
     glBufferData(GL_DRAW_INDIRECT_BUFFER, sizeof(cmd), &cmd, GL_DYNAMIC_DRAW);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
     glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
     glEnableVertexAttribArray(0);
@@ -118,16 +118,26 @@ int main() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indexes), indexes, GL_STATIC_DRAW);
 
+    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, ACB);
+    GLuint initial = 0;
+    glBufferData(GL_ATOMIC_COUNTER_BUFFER, sizeof(GLuint), &initial, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, ACB);
+    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
+
     std::vector<glm::vec4> defaultValues(maxParticles, glm::vec4(-1.0f, -1.0f, -1.0f, -1.0f));
     setupSSBO(SSBO[0], positions, 0, defaultValues);
     setupSSBO(SSBO[1], velocity, 1, defaultValues);
-    setupSSBO(SSBO[2], colour, 2, defaultValues);
     setupSSBO(SSBO[3], regionPoint, 3, defaultValues);
     setupSSBO(SSBO[4], origin, 4, defaultValues);
+    setupSSBO(SSBO[2], colour, 2, defaultValues);
 
-    /*glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO[4]);
-    glm::vec4* test = (glm::vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, 1 * sizeof(glm::vec4), GL_MAP_READ_BIT);
-    std::cout << test[0].w << "\n";*/
+    std::vector<int> flagDefault(maxParticles, 0);
+    std::vector<int> flagfirework(particleNum, 1);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, flags);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(int) * maxParticles, flagDefault.data(), GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(int) * particleNum, flagfirework.data());
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, flags);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
@@ -137,9 +147,10 @@ int main() {
     // shaders
     Shader particleShader("shaders/particle.vert", "shaders/particle.frag");
     Shader computeShaderUpdate("shaders/particleUpdate.comp");
-    Shader computeShaderSort("shaders/particleSort.comp");
+    Shader computeShaderPrefix("shaders/particlePrefix.comp");
     Shader computeShaderTrail("shaders/particleTrail.comp");
-    Shader compShaders[3] = { computeShaderUpdate, computeShaderTrail, computeShaderSort};
+    Shader computeShaderReorder("shaders/particleReorder.comp");
+    Shader compShaders[4] = { computeShaderUpdate, computeShaderTrail, computeShaderPrefix, computeShaderReorder };
 
 
     Shader floorShader("shaders/floor.vert", "shaders/floor.frag");
@@ -157,7 +168,12 @@ int main() {
         glClearColor(0.05f, 0.05f, 0.05f, 0.05f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    	updateParticles(compShaders, SSBO);
+    	updateParticles(compShaders, SSBO, ACB, flags);
+
+        glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, ACB);
+        GLuint* num = (GLuint*)glMapBufferRange(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), GL_MAP_READ_BIT);
+        glUnmapBuffer(GL_ATOMIC_COUNTER_BUFFER);
+        // std::cout << "alive: " << num[0] << "\n";
 
     	particleShader.use();
         glm::mat4 view = camera.GetViewMatrix();
@@ -168,7 +184,7 @@ int main() {
         particleShader.setMat4("projection", projection);
 
         glBindVertexArray(VAO);
-        cmd.instanceCount = aliveCount;
+        cmd.instanceCount = num[0];
 
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, DIB);
         glBufferData(GL_DRAW_INDIRECT_BUFFER, sizeof(DrawElementsIndirectCommand), &cmd, GL_DYNAMIC_DRAW);
@@ -199,7 +215,10 @@ int main() {
 }
 
 // function to update particles
-void updateParticles(Shader* compShader, GLuint* SSBO) {
+void updateParticles(Shader* compShader, GLuint* SSBO, GLuint ACB, GLuint flags) {
+    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, ACB);
+    GLuint initial = 0;
+    glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &initial);
 
     // update particle data
     compShader[0].use();
@@ -212,47 +231,26 @@ void updateParticles(Shader* compShader, GLuint* SSBO) {
     compShader[0].setFloat("spiralAttractionStrength", 0.7f);
     compShader[0].setFloat("acceleration", 25.0f);
 	glDispatchCompute(maxParticles / 256, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
-    /*// add trail particles
-    if (aliveCount > 0)
-    {
-    	compShader[1].use();
-	    compShader[1].setFloat("trailFadeRate", 1.0f);
-	    compShader[1].setFloat("trailRate", 0.7f);
-	    compShader[1].setInt("aliveCount", aliveCount);
-        compShader[1].setInt("maxParticle", maxParticles);
-	    glDispatchCompute(particleNum / 256, 1, 1);
-	    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);  
-    }
-
-    // sorting particles in SSBOs
+    // prefix sum
     compShader[2].use();
     compShader[2].setInt("maxParticle", maxParticles);
-    glDispatchCompute(maxParticles / 256, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);*/
+    glDispatchCompute(maxParticles / 1024, 1, 1);
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO[4]);
-    glm::vec4* origin = (glm::vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, sizeof(glm::vec4) * maxParticles, GL_MAP_READ_BIT);
-    if (origin[0].w <= 0.0f)
-    {
-        aliveCount = 0;
-    }
-    else
-    {
-		for (unsigned int i = 1; i < maxParticles; ++i)
-	    {
-	        if (origin[i].w <= 0.0f)
-	        {
-	            aliveCount = i - 1;
-	            break;
-	        }
-	    }  
-    }
-    
-    std::cout << "alive num: " << aliveCount << "\n";
-    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    // reorder
+    compShader[3].use();
+    glDispatchCompute(maxParticles / 1024, 1, 1);
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+	// add trail particles
+    compShader[1].use();
+    compShader[1].setFloat("trailFadeRate", 1.0f / 2.5f);
+    compShader[1].setFloat("trailRate", 0.7f);
+    compShader[1].setUInt("maxParticle", maxParticles);
+    glDispatchCompute(particleNum / 256, 1, 1);
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);  
 }
 
 glm::vec4 regionCheck(const glm::vec4& v, const glm::vec4& origin)
