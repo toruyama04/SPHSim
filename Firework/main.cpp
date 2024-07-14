@@ -42,14 +42,14 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 constexpr unsigned int maxParticles = 65536;
-constexpr unsigned int particleNum = 4096;
+constexpr unsigned int particleNum = 8192;
 constexpr unsigned int fireworkNum = 1;
 
 int main() {
     GLFWwindow* window = initialiseOpenGL();
     // global states
     glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
@@ -71,7 +71,7 @@ int main() {
         for (unsigned int j = 0; j < particleNum; ++j) {
             float theta = glm::linearRand(0.0f, glm::two_pi<float>());
             float phi = glm::linearRand(0.0f, glm::pi<float>());
-			float speed = glm::linearRand(0.0f, 1.5f);
+			float speed = glm::linearRand(2.0f, 5.0f);
             velocity.emplace_back(speed * sin(phi) * cos(theta), speed * sin(phi) * sin(theta), speed * cos(phi), fade);
             colour.emplace_back(3.0f, 1.0f, 1.0f, 1.0f);
             regionPoint.push_back(regionCheck(glm::normalize(velocity[j]), glm::vec4(fireworkPos[i], 1.0f)));
@@ -175,6 +175,9 @@ int main() {
         glUnmapBuffer(GL_ATOMIC_COUNTER_BUFFER);
         // std::cout << "alive: " << num[0] << "\n";
 
+        /*glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO[2]);
+        glm::vec4* debug = (glm::vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, )*/
+
     	particleShader.use();
         glm::mat4 view = camera.GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
@@ -224,12 +227,10 @@ void updateParticles(Shader* compShader, GLuint* SSBO, GLuint ACB, GLuint flags)
     compShader[0].use();
     compShader[0].setFloat("deltaTime", deltaTime);
     compShader[0].setVec3("grav", glm::vec3(0.0f, -2.81f, 0.0));
-    compShader[0].setFloat("dampingFactor", 13.0f);
     compShader[0].setFloat("minVelocity", 0.1f);
-    compShader[0].setFloat("attractionStrength", 0.95f);
-    compShader[0].setFloat("spiralness", 1.4f);
-    compShader[0].setFloat("spiralAttractionStrength", 0.7f);
-    compShader[0].setFloat("acceleration", 25.0f);
+    compShader[0].setFloat("attractionStrength", 1.3f);
+    compShader[0].setFloat("spiralness", 3.0f);
+    compShader[0].setFloat("spiralAttractionStrength",2.2f);
 	glDispatchCompute(maxParticles / 256, 1, 1);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
@@ -246,8 +247,7 @@ void updateParticles(Shader* compShader, GLuint* SSBO, GLuint ACB, GLuint flags)
 
 	// add trail particles
     compShader[1].use();
-    compShader[1].setFloat("trailFadeRate", 1.0f / 2.5f);
-    compShader[1].setFloat("trailRate", 0.7f);
+    compShader[1].setFloat("trailRate", 0.9f);
     compShader[1].setUInt("maxParticle", maxParticles);
     glDispatchCompute(particleNum / 256, 1, 1);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);  

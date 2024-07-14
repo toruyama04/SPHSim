@@ -26,9 +26,9 @@ layout(std430, binding = 4) buffer Origin {
 layout(binding = 0, offset = 0) uniform atomic_uint aliveCount;
  
 
-uniform float trailFadeRate;
 uniform float trailRate;
 uniform uint maxParticle;
+
 
 void main()
 {
@@ -43,10 +43,14 @@ void main()
     {
         return;
     }
+    float offsetX = sin(float(id) * 12.9898) * 0.43758;
+    float offsetY = cos(float(id) * 4.1414) * 0.21798;
+    float offsetZ = sin(float(id) * 7.6736) * 0.14354;
+    vec3 smallOffset = vec3(offsetX, offsetY, offsetZ) * 0.01;
     regionPoint[index] = vec4(regionPoint[id].x, regionPoint[id].y, regionPoint[id].z, 0.0);
     positions[index] = positions[id];
-    velocity[index] = vec4(velocity[id].x * trailRate, velocity[id].y * trailRate, velocity[id].z * trailRate, trailFadeRate);
-    origin[index] = vec4(origin[id].x, origin[id].y, origin[id].z, (origin[id].w / colours[id].x) * 2.5);
-    colours[index] = vec4(2.5, 1.0, 1.0, colours[id].w);
+    velocity[index] = vec4((velocity[id].xyz * trailRate) + smallOffset, -1.0);
+    origin[index] = vec4(origin[id].x, origin[id].y, origin[id].z, (origin[id].w / colours[id].x) * 2.75);
+    colours[index] = vec4(2.0, 1.0, 0.5, colours[id].w);
     atomicCounterIncrement(aliveCount);
 }
