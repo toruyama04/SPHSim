@@ -142,14 +142,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Application.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="ParticleSystem.cpp" />
+    <ClCompile Include="Firework.cpp" />
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="utils.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Application.h" />
     <ClInclude Include="camera.h" />
+    <ClInclude Include="Firework.h" />
     <ClInclude Include="shader.h" />
   </ItemGroup>
   <ItemGroup>
