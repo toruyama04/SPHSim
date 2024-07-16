@@ -1,7 +1,6 @@
 ﻿#include "Firework.h"
-
-#include <vector>
 #include <glad/glad.h>
+#include <vector>
 #include <glm/vec4.hpp>
 #include <glm/gtc/constants.hpp>
 #include <glm/gtc/random.hpp>
@@ -56,8 +55,8 @@ void Firework::run()
 {
 	try
 	{
-		shaders["floorShader"].use();
-	    shaders["floorShader"].setVec3("colour", glm::vec3(0.5f, 0.5f, 0.5f));
+		shaders["floorShader"]->use();
+	    shaders["floorShader"]->setVec3("colour", glm::vec3(0.5f, 0.5f, 0.5f));
 
 	    while (!glfwWindowShouldClose(window))
 	    {
@@ -70,21 +69,21 @@ void Firework::run()
 	        glClearColor(0.05f, 0.05f, 0.05f, 0.05f);
 	        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	        shaders["particleShader"].use();
-	        glm::mat4 view = camera.GetViewMatrix();
-	        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), static_cast<float>(screen_width) / static_cast<float>(screen_height), 0.1f, 100.0f);
+	        shaders["particleShader"]->use();
+	        glm::mat4 view = camera->GetViewMatrix();
+	        glm::mat4 projection = glm::perspective(glm::radians(camera->Zoom), static_cast<float>(screen_width) / static_cast<float>(screen_height), 0.1f, 100.0f);
 	        glm::mat4 model = glm::mat4(1.0f);
-	        shaders["particleShader"].setMat4("model", model);
-	        shaders["particleShader"].setMat4("view", view);
-	        shaders["particleShader"].setMat4("projection", projection);
+	        shaders["particleShader"]->setMat4("model", model);
+	        shaders["particleShader"]->setMat4("view", view);
+	        shaders["particleShader"]->setMat4("projection", projection);
 
-	        shaders["floorShader"].use();
+	        shaders["floorShader"]->use();
 	        model = glm::mat4(1.0f);
 	        model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
 	        model = glm::scale(model, glm::vec3(2.0f));
-	        shaders["floorShader"].setMat4("model", model);
-	        shaders["floorShader"].setMat4("view", view);
-	        shaders["floorShader"].setMat4("projection", projection);
+	        shaders["floorShader"]->setMat4("model", model);
+	        shaders["floorShader"]->setMat4("view", view);
+	        shaders["floorShader"]->setMat4("projection", projection);
 	        updateParticles();
 
 	        displayFPS();
@@ -108,28 +107,28 @@ void Firework::updateParticles()
 	    glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &initial);
 
 	    // update particle data
-	    shaders["compShaderUpdate"].use();
-	    shaders["compShaderUpdate"].setFloat("deltaTime", deltaTime);
-	    shaders["compShaderUpdate"].setVec3("grav", glm::vec3(0.0f, -2.81f, 0.0));
-	    shaders["compShaderUpdate"].setFloat("minVelocity", 0.1f);
+	    shaders["compShaderUpdate"]->use();
+	    shaders["compShaderUpdate"]->setFloat("deltaTime", deltaTime);
+	    shaders["compShaderUpdate"]->setVec3("grav", glm::vec3(0.0f, -2.81f, 0.0));
+	    shaders["compShaderUpdate"]->setFloat("minVelocity", 0.1f);
 	    glDispatchCompute(max_particles / 256, 1, 1);
 	    glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
 	    // prefix sum
-	    shaders["computeShaderPrefix"].use();
-	    shaders["computeShaderPrefix"].setInt("maxParticle", max_particles);
+	    shaders["computeShaderPrefix"]->use();
+	    shaders["computeShaderPrefix"]->setInt("maxParticle", max_particles);
 	    glDispatchCompute(max_particles / 1024, 1, 1);
 	    glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
 	    // reorder
-	    shaders["computeShaderReorder"].use();
+	    shaders["computeShaderReorder"]->use();
 	    glDispatchCompute(max_particles / 1024, 1, 1);
 	    glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
 	    // add trail particles
-	    shaders["computeShaderTrail"].use();
-	    shaders["computeShaderTrail"].setFloat("trailRate", 0.9f);
-	    shaders["computeShaderTrail"].setUInt("maxParticle", max_particles);
+	    shaders["computeShaderTrail"]->use();
+	    shaders["computeShaderTrail"]->setFloat("trailRate", 0.9f);
+	    shaders["computeShaderTrail"]->setUInt("maxParticle", max_particles);
 	    glDispatchCompute(particle_num / 256, 1, 1);
 	    glMemoryBarrier(GL_ALL_BARRIER_BITS);
 

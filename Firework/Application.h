@@ -6,7 +6,7 @@
 #include "shader.h"
 
 #include <string>
-#include <map>
+#include <unordered_map>
 
 
 class Application
@@ -31,14 +31,14 @@ public:
 	
 
 protected:
-	std::map<std::string, Shader> shaders;
+	std::unordered_map<std::string, std::shared_ptr<Shader>> shaders;
 	unsigned int screen_width;
 	unsigned int screen_height;
 	float deltaTime;
 	float lastFrame;
 	GLFWwindow* window;
 	std::string title;
-	Camera camera;
+	std::unique_ptr<Camera> camera;
 	double last_x;
 	double last_y;
 	bool first_mouse;

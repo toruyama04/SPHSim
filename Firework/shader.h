@@ -129,6 +129,12 @@ public:
         glDeleteShader(compute);
     }
 
+    Shader(const Shader& s) : ID{ s.ID } {}
+    Shader& operator=(const Shader& s)
+    {
+        ID = s.ID;
+        return *this;
+    }
 
     // activate the shader
     // ------------------------------------------------------------------------

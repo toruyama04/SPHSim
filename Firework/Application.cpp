@@ -1,5 +1,5 @@
 ﻿#include "Application.h"
-
+#include <glad/glad.h>
 #include <iostream>
 
 Application::Application(unsigned int screen_width, unsigned int screen_height) : screen_width{screen_width}, screen_height{screen_height}
@@ -11,12 +11,16 @@ Application::Application(unsigned int screen_width, unsigned int screen_height) 
     last_y = static_cast<float>(screen_height) / 2.0f;
     window = initialise();
 
-    glEnable(GL_BLEND | GL_DEPTH_TEST);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDepthFunc(GL_LESS);
+    if (window != nullptr)
+    {
+        glEnable(GL_BLEND | GL_DEPTH_TEST);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glDepthFunc(GL_LESS);
 
-    Camera default_camera(glm::vec3(0.0f, 0.0f, 15.0f));
-    camera = default_camera;
+        camera = std::make_unique<Camera>(glm::vec3(0.0f, 0.0f, 15.0f));
+    }
+    else
+        std::cout << "window could not be initialised\n";
 }
 
 Application::~Application()
@@ -27,16 +31,14 @@ Application::~Application()
 
 void Application::addShader(const std::string shader_name, const char* computePath)
 {
-    shaders.emplace(std::piecewise_construct,
-        std::forward_as_tuple(shader_name),
-        std::forward_as_tuple(computePath));
+    auto valuePtr = std::make_shared<Shader>(computePath);
+    shaders.emplace(shader_name, valuePtr);
 }
 
 void Application::addShader(const std::string shader_name, const char* vertexPath, const char* fragmentPath)
 {
-    shaders.emplace(std::piecewise_construct,
-        std::forward_as_tuple(shader_name),
-        std::forward_as_tuple(vertexPath, fragmentPath));
+    auto valuePtr = std::make_shared<Shader>(vertexPath, fragmentPath);
+    shaders.emplace(shader_name, valuePtr);
 }
 
 GLFWwindow* Application::initialise()
@@ -47,7 +49,7 @@ GLFWwindow* Application::initialise()
         return nullptr;
     }
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     GLFWwindow* window = glfwCreateWindow(screen_width, screen_height, "", nullptr, nullptr);
@@ -62,7 +64,7 @@ GLFWwindow* Application::initialise()
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         std::cout << "Failed to initialise GLAD\n";
         return nullptr;
@@ -133,7 +135,7 @@ void Application::mouseMoved(double xposIn, double yposIn)
     last_x = xpos;
     last_y = ypos;
 
-    camera.ProcessMouseMovement(xoffset, yoffset);
+    camera->ProcessMouseMovement(xoffset, yoffset);
 }
 
 void Application::processInput(GLFWwindow* window)
@@ -141,11 +143,11 @@ void Application::processInput(GLFWwindow* window)
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera.ProcessKeyboard(FORWARD, deltaTime);
+        camera->ProcessKeyboard(FORWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
+        camera->ProcessKeyboard(BACKWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera.ProcessKeyboard(LEFT, deltaTime);
+        camera->ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera.ProcessKeyboard(RIGHT, deltaTime);
+        camera->ProcessKeyboard(RIGHT, deltaTime);
 }
