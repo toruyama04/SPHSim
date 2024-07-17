@@ -22,14 +22,13 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
 Application::~Application()
 {
     delete camera;
-    delete firework;
     glfwDestroyWindow(window);
     glfwTerminate();
 }
 
-void Application::addFirework(Firework& firework)
+void Application::addFirework(Firework&& firework)
 {
-    this->firework = firework;
+    this->firework = std::make_unique<Firework>(std::move(firework));
 }
 
 void Application::run()

@@ -2,6 +2,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include <memory>
+
 #include "camera.h"
 #include "Firework.h"
 
@@ -17,7 +19,7 @@ public:
 
 	GLFWwindow* initialise();
 	void displayFPS();
-	void addFirework(Firework& firework);
+	void addFirework(Firework&& firework);
 
 	static void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 	static void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -27,7 +29,7 @@ public:
 private:
 	unsigned int screen_width;
 	unsigned int screen_height;
-	Firework* firework;
+	std::unique_ptr<Firework> firework;
 
 	float deltaTime;
 	float lastFrame;

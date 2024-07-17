@@ -9,7 +9,7 @@ int main() {
     Firework myFirework;
 
     myFirework.addFirework(fireworkPos[0]);
-    myApp.addFirework(myFirework);
+    myApp.addFirework(std::move(myFirework));
 
     myApp.run();
 
