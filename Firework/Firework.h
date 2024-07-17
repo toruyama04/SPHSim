@@ -2,10 +2,11 @@
 #include <glad/glad.h>
 #include <glm/vec4.hpp>
 
-#include "shader.h"
+#include "Shader.h"
 #include "Application.h"
 
 #include <vector>
+#include <unordered_map>
 
 struct DrawElementsIndirectCommand
 {
@@ -16,35 +17,34 @@ struct DrawElementsIndirectCommand
 	GLuint baseInstance;
 };
 
-class Firework : public Application
+class Firework
 {
 public:
 	Firework();
-	Firework(unsigned int firework_num);
 	~Firework();
 
-	void run() override;
+	void init();
+	void render(const glm::mat4& view, const glm::mat4& projection);
+	void update(const float delta_time);
 
-	void setDefaultValues();
-	void initialiseBuffers(std::vector<glm::vec4>& positions, std::vector<glm::vec4>& velocity);
-	void updateParticles();
-	void addShaders();
+	void addFirework(const glm::vec3& origin);
+	void initialiseBuffers();
 
-	template<typename T>
-	void setupSSBO(unsigned int buf, std::vector<T>& type, int bindPoint, std::vector<T>& defaultValues)
-	{
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, buf);
-		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(T) * max_particles, nullptr, GL_DYNAMIC_DRAW);
-		glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(T) * max_particles, defaultValues.data());
-		glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(T) * particle_num, type.data());
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindPoint, buf);
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-	}
+	GLuint getAliveCount();
+	void resetAliveCount();
 
 private:
-	GLuint VAO, VBO, EBO, SSBO[2], DIB, ACB, flags, floorVAO, floorVBO;
-	unsigned int firework_num, particle_num, max_particles;
+	void initBuffers();
+	void initShaders();
+	void addShader(const std::string& shader_name, Shader* shader);
+
+	std::unordered_map<std::string, Shader*> shaders;
+	GLuint VBO, VAO, EBO;
+	GLuint positionsSSBO, velocitiesSSBO, aliveFlagSSBO;
+	GLuint atomicCounterBuffer;
+	GLuint drawIndirectBuffer;
+	unsigned int particle_num, max_particles;
 	float firework_lifetime;
-	bool add_floor;
+	glm::vec3 origin_pos;
 	DrawElementsIndirectCommand cmd;
 };

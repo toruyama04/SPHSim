@@ -2,43 +2,61 @@
 #include <glad/glad.h>
 #include <iostream>
 
-Application::Application(unsigned int screen_width, unsigned int screen_height) : screen_width{screen_width}, screen_height{screen_height}
+Application::Application(unsigned int screen_width, unsigned int screen_height, const char* title) : screen_width{screen_width}, screen_height{screen_height}
 {
     first_mouse = true;
     deltaTime = 0.0f;
     lastFrame = 0.0f;
+    this->title = title;
     last_x = static_cast<float>(screen_width) / 2.0f;
     last_y = static_cast<float>(screen_height) / 2.0f;
     window = initialise();
 
-    if (window != nullptr)
-    {
-        glEnable(GL_BLEND | GL_DEPTH_TEST);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glDepthFunc(GL_LESS);
+    glEnable(GL_BLEND | GL_DEPTH_TEST);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthFunc(GL_LESS);
 
-        camera = std::make_unique<Camera>(glm::vec3(0.0f, 0.0f, 15.0f));
-    }
-    else
-        std::cout << "window could not be initialised\n";
+    camera = new Camera(glm::vec3(0.0f, 0.0f, 15.0f));
 }
 
 Application::~Application()
 {
+    delete camera;
+    delete firework;
     glfwDestroyWindow(window);
     glfwTerminate();
 }
 
-void Application::addShader(const std::string shader_name, const char* computePath)
+void Application::addFirework(Firework& firework)
 {
-    auto valuePtr = std::make_shared<Shader>(computePath);
-    shaders.emplace(shader_name, valuePtr);
+    this->firework = firework;
 }
 
-void Application::addShader(const std::string shader_name, const char* vertexPath, const char* fragmentPath)
+void Application::run()
 {
-    auto valuePtr = std::make_shared<Shader>(vertexPath, fragmentPath);
-    shaders.emplace(shader_name, valuePtr);
+	while (!glfwWindowShouldClose(window))
+	{
+        float currentFrame = static_cast<float>(glfwGetTime());
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+        processInput();
+        glClearColor(0.05f, 0.05f, 0.05f, 0.05f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        firework->update(deltaTime);
+
+        glm::mat4 view = camera->GetViewMatrix();
+        glm::mat4 projection = glm::perspective(glm::radians(camera->Zoom), static_cast<float>(screen_width) / static_cast<float>(screen_height), 0.1f, 100.0f);
+
+        firework->render(view, projection);
+
+        // add fireworks based on user input?
+        // add floor class or something like that
+
+        displayFPS();
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+	}
 }
 
 GLFWwindow* Application::initialise()
@@ -52,7 +70,7 @@ GLFWwindow* Application::initialise()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(screen_width, screen_height, "", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(screen_width, screen_height, title, nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);
 	if (window == nullptr)
     {
@@ -95,30 +113,23 @@ void Application::displayFPS() {
     frameCount++;
 }
 
-void Application::framebufferSizeChanged(GLFWwindow* window, int width, int height)
-{
-	glViewport(0, 0, width, height);
-}
-
 void Application::framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-    Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
-    if (app)
-    {
-        app->framebufferSizeChanged(window, width, height);
+    auto app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(window));
+    if (app) {
+        glViewport(0, 0, width, height);
     }
 }
 
 void Application::mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
-	Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
-    if (app)
-    {
-        app->mouseMoved(xpos, ypos);
+    auto app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(window));
+    if (app) {
+        app->mouseMove(xpos, ypos);
     }
 }
 
-void Application::mouseMoved(double xposIn, double yposIn)
+void Application::mouseMove(double xposIn, double yposIn)
 {
     float xpos = static_cast<float>(xposIn);
     float ypos = static_cast<float>(yposIn);
@@ -138,7 +149,7 @@ void Application::mouseMoved(double xposIn, double yposIn)
     camera->ProcessMouseMovement(xoffset, yoffset);
 }
 
-void Application::processInput(GLFWwindow* window)
+void Application::processInput()
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);

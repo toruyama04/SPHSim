@@ -1,12 +1,17 @@
 #include <glad/glad.h>
-#include "shader.h"
 #include "Firework.h"
+#include "utils.h"
 
 
 int main() {
 
-    Firework my_firework;
-    my_firework.run();
+    Application myApp;
+    Firework myFirework;
+
+    myFirework.addFirework(fireworkPos[0]);
+    myApp.addFirework(myFirework);
+
+    myApp.run();
 
     return 0;
 }
