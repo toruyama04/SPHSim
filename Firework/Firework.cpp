@@ -34,19 +34,13 @@ Firework::~Firework()
 	}
 }
 
-void Firework::addShader(const std::string& shader_name, Shader* shader)
-{
-    shaders[shader_name] = shader;
-}
-
 void Firework::initShaders()
 {
-    addShader("particleShader", new Shader("shaders/particle.vert", "shaders/particle.frag"));
-    addShader("compShaderUpdate", new Shader("shaders/particleUpdate.comp"));
-    addShader("computeShaderPrefix", new Shader("shaders/particlePrefix.comp"));
-    addShader("computeShaderTrail", new Shader("shaders/particleTrail.comp"));
-    addShader("computeShaderReorder", new Shader("shaders/particleReorder.comp"));
-    addShader("floorShader", new Shader("floorShader", "shaders/floor.vert", "shaders/floor.frag"));
+    shaders["particleShader"] = new Shader("shaders/particle.vert", "shaders/particle.frag");
+    shaders["computeShaderUpdate"] = new Shader("shaders/particleUpdate.comp");
+    shaders["computeShaderPrefix"] = new Shader("shaders/particlePrefix.comp");
+    shaders["computeShaderTrail"] = new Shader("shaders/particleTrail.comp");
+    shaders["computeShaderReorder"] = new Shader("shaders/particleReorder.comp");
 }
 
 void Firework::initBuffers()
@@ -54,8 +48,6 @@ void Firework::initBuffers()
     // initialising firework VAO
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
-    cmd = { 6, 1, 0, 0, 0 };
-    glBufferData(GL_DRAW_INDIRECT_BUFFER, sizeof(cmd), &cmd, GL_DYNAMIC_DRAW);
 
     // initialising particle vertices buffer
     glGenBuffers(1, &VBO);
@@ -128,8 +120,8 @@ void Firework::initBuffers()
 
 void Firework::render(const glm::mat4& view, const glm::mat4& projection)
 {
-	shaders["floorShader"]->use();
-    shaders["floorShader"]->setVec3("colour", glm::vec3(0.5f, 0.5f, 0.5f));
+	/*shaders["floorShader"]->use();
+    shaders["floorShader"]->setVec3("colour", glm::vec3(0.5f, 0.5f, 0.5f));*/
 
     shaders["particleShader"]->use();
 	glm::mat4 model = glm::mat4(1.0f);
@@ -150,15 +142,15 @@ void Firework::render(const glm::mat4& view, const glm::mat4& projection)
     shaders["floorShader"]->setMat4("projection", projection);*/
 }
 
-void Firework::update(const float delta_time)
+void Firework::update(float delta_time)
 {
     resetAliveCount();
 
     // update particle data
-    shaders["compShaderUpdate"]->use();
-    shaders["compShaderUpdate"]->setFloat("deltaTime", delta_time);
-    shaders["compShaderUpdate"]->setVec3("grav", glm::vec3(0.0f, -2.81f, 0.0));
-    shaders["compShaderUpdate"]->setFloat("minVelocity", 0.1f);
+    shaders["computeShaderUpdate"]->use();
+    shaders["computeShaderUpdate"]->setFloat("deltaTime", delta_time);
+    shaders["computeShaderUpdate"]->setVec3("grav", glm::vec3(0.0f, -2.81f, 0.0));
+    shaders["computeShaderUpdate"]->setFloat("minVelocity", 0.1f);
     glDispatchCompute(max_particles / 256, 1, 1);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
@@ -215,7 +207,7 @@ void Firework::addFirework(const glm::vec3& origin)
         float phi = glm::linearRand(0.0f, glm::pi<float>());
         float speed = glm::linearRand(2.0f, 5.0f);
         velocity.emplace_back(speed * sin(phi) * cos(theta), speed * sin(phi) * sin(theta), speed * cos(phi), firework_lifetime);
-        positions.emplace_back(origin_pos, firework_lifetime);
+        positions.emplace_back(origin, firework_lifetime);
 	}
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, positionsSSBO);
 	glBufferSubData(GL_SHADER_STORAGE_BUFFER, aliveIndex, sizeof(glm::vec4) * particle_num, positions.data());
@@ -225,7 +217,7 @@ void Firework::addFirework(const glm::vec3& origin)
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
-GLuint Firework::getAliveCount()
+GLuint Firework::getAliveCount() const
 {
     glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
     GLuint* num = (GLuint*)glMapBufferRange(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), GL_MAP_READ_BIT);

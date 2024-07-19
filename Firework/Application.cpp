@@ -5,13 +5,17 @@
 Application::Application(unsigned int screen_width, unsigned int screen_height, const char* title) : screen_width{screen_width}, screen_height{screen_height}
 {
     first_mouse = true;
+    firework = nullptr;
     deltaTime = 0.0f;
     lastFrame = 0.0f;
     this->title = title;
     last_x = static_cast<float>(screen_width) / 2.0f;
     last_y = static_cast<float>(screen_height) / 2.0f;
     window = initialise();
-
+    if (window)
+    {
+        std::cerr << "Error initialising window\n";
+    }
     glEnable(GL_BLEND | GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthFunc(GL_LESS);
@@ -21,14 +25,10 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
 
 Application::~Application()
 {
+    delete firework;
     delete camera;
     glfwDestroyWindow(window);
     glfwTerminate();
-}
-
-void Application::addFirework(Firework&& firework)
-{
-    this->firework = std::make_unique<Firework>(std::move(firework));
 }
 
 void Application::run()
@@ -58,6 +58,11 @@ void Application::run()
 	}
 }
 
+void Application::addFirework(Firework* firework_in)
+{
+    firework = firework_in;
+}
+
 GLFWwindow* Application::initialise()
 {
 	if (!glfwInit())
@@ -68,7 +73,6 @@ GLFWwindow* Application::initialise()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
     GLFWwindow* window = glfwCreateWindow(screen_width, screen_height, title, nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);
 	if (window == nullptr)
