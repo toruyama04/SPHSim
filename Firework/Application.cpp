@@ -42,18 +42,14 @@ void Application::run()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         checkOpenGLErrors("glClear");
 
-        if (firework) {
-            firework->update(deltaTime);
-            checkOpenGLErrors("firework->update");
+        firework->update(deltaTime);
+        checkOpenGLErrors("firework->update");
 
-            glm::mat4 view = camera->GetViewMatrix();
-            glm::mat4 projection = glm::perspective(glm::radians(camera->Zoom), static_cast<float>(screen_width) / static_cast<float>(screen_height), 0.1f, 100.0f);
+        glm::mat4 view = camera->GetViewMatrix();
+        glm::mat4 projection = glm::perspective(glm::radians(camera->Zoom), static_cast<float>(screen_width) / static_cast<float>(screen_height), 0.1f, 100.0f);
 
-            firework->render(view, projection);
-            checkOpenGLErrors("firework->render");
-        }
-        else
-            std::cerr << "error with firework\n";
+        firework->render(view, projection);
+        checkOpenGLErrors("firework->render");
 
         // add fireworks based on user input?
         // add floor class or something like that
@@ -95,7 +91,7 @@ GLFWwindow* Application::initialise()
         return nullptr;
     }
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
     window = glfwCreateWindow(screen_width, screen_height, title, nullptr, nullptr);

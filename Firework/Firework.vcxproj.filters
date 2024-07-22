@@ -53,8 +53,6 @@
     <None Include="shaders\floor.vert" />
     <None Include="shaders\particle.frag" />
     <None Include="shaders\particle.vert" />
-    <None Include="shaders\rocket.frag" />
-    <None Include="shaders\rocket.vert" />
     <None Include="shaders\particleUpdate.comp" />
     <None Include="shaders\particlePrefix.comp" />
     <None Include="shaders\particleTrail.comp" />

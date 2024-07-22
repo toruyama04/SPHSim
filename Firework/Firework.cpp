@@ -116,6 +116,7 @@ void Firework::initBuffers()
 
 void Firework::render(const glm::mat4& view, const glm::mat4& projection)
 {
+    glBindVertexArray(VAO);
     GLuint count = getAliveCount();
     cmd = { 6, count, 0, 0 };
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndirectBuffer);
@@ -123,7 +124,7 @@ void Firework::render(const glm::mat4& view, const glm::mat4& projection)
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
 	/*shaders["floorShader"]->use();
     shaders["floorShader"]->setVec3("colour", glm::vec3(0.5f, 0.5f, 0.5f));*/
-    glBindVertexArray(VAO);
+
     shaders["particleShader"]->use();
 	glm::mat4 model = glm::mat4(1.0f);
     shaders["particleShader"]->setMat4("model", model);
@@ -133,8 +134,9 @@ void Firework::render(const glm::mat4& view, const glm::mat4& projection)
     if (count > 0)
     {
 		glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr);
+        glMemoryBarrier(GL_ALL_BARRIER_BITS);
     }
-glBindVertexArray(0);
+	glBindVertexArray(0);
 
     /*shaders["floorShader"]->use();
     model = glm::mat4(1.0f);
@@ -147,6 +149,7 @@ glBindVertexArray(0);
 
 void Firework::update(float delta_time)
 {
+    glBindVertexArray(VAO);
     resetAliveCount();
 
     // update particle data
@@ -158,14 +161,14 @@ void Firework::update(float delta_time)
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
     // prefix sum
-    shaders["computeShaderPrefix"]->use();
+    /*shaders["computeShaderPrefix"]->use();
     glDispatchCompute(max_particles / 1024, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
 
     // reorder
-    shaders["computeShaderReorder"]->use();
+    /*shaders["computeShaderReorder"]->use();
     glDispatchCompute(max_particles / 1024, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
 
     // add trail particles
     /** what happens when we add more fireworks?
@@ -192,6 +195,7 @@ void Firework::update(float delta_time)
 
 void Firework::resetAliveCount()
 {
+    glBindVertexArray(VAO);
     glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
     GLuint initial = 0;
     glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &initial);
@@ -200,6 +204,7 @@ void Firework::resetAliveCount()
 
 void Firework::addFirework(const glm::vec3& origin)
 {
+    glBindVertexArray(VAO);
     GLuint aliveIndex = getAliveCount();
     if (aliveIndex + particle_num < max_particles)
     {
@@ -226,6 +231,7 @@ void Firework::addFirework(const glm::vec3& origin)
 
 GLuint Firework::getAliveCount() const
 {
+    glBindVertexArray(VAO);
     glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
     GLuint* num = (GLuint*)glMapBufferRange(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), GL_MAP_READ_BIT);
     GLuint count = num[0];

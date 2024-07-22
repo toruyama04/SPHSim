@@ -1,4 +1,5 @@
-#version 450 core
+#version 460 core
+
 layout (location = 0) in vec3 aPos;
 
 out vec4 colour;
@@ -18,5 +19,10 @@ uniform mat4 projection;
 void main() {
     vec3 quadVertexPosition = aPos + positions[gl_InstanceID].xyz;
     gl_Position = projection * view * model * vec4(quadVertexPosition, 1.0f);
+    if (positions[gl_InstanceID].w <= 0.0)
+    {
+        colour = vec4(1.0, 1.0, 1.0, 0.0);
+        return;
+    }
     colour = vec4(1.0, 1.0, 1.0, positions[gl_InstanceID].w / velocity[gl_InstanceID].w);
 }
