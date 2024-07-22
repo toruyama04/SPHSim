@@ -24,16 +24,17 @@ void main() {
     uint id = gl_GlobalInvocationID.x;
     positions[id].w -= deltaTime;
     if (positions[id].w < 0.0) {
+        positions[id].w = -1.0;
         flags[id] = 0;
         return;
     }
     flags[id] = 1;
-    float lifeR = positions[id].w / velocity[id].w;
+    // float lifeR = positions[id].w / velocity[id].w;
     vec3 particleDirection = normalize(velocity[id].xyz);
 
     // Gravity effect
-    float gravForce = 1.0 - lifeR;
-    velocity[id].xyz += gravForce * deltaTime * grav;
+    // float gravForce = 1.0 - lifeR;
+    velocity[id].xyz += deltaTime * grav * 0.2;
 
     float decayFactor = exp(-0.003);
     velocity[id].xyz *= decayFactor;

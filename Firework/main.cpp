@@ -7,13 +7,13 @@
 
 int main() {
 
-    Application myApp(1920, 1080, "Firework");
-    Firework myFirework;
+    Application* myApp = new Application(1920, 1080, "Firework");
+    Firework* myFirework = new Firework;
 
-    myFirework.addFirework(fireworkPos[0]);
-    myApp.addFirework(&myFirework);
+    myFirework->addFirework(fireworkPos[0]);
+    myApp->addFirework(myFirework);
 
-    myApp.run();
+    myApp->run();
 
     return 0;
 }

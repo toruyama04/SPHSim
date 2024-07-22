@@ -20,6 +20,8 @@ public:
 
 	Firework();
 	~Firework();
+	Firework(const Firework&) = delete;
+	Firework& operator=(const Firework&) = delete;
 
 	void init();
 	void render(const glm::mat4& view, const glm::mat4& projection);
