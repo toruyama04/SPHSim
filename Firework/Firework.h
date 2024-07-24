@@ -20,25 +20,21 @@ public:
 
 	Firework();
 	~Firework();
-	Firework(const Firework&) = delete;
-	Firework& operator=(const Firework&) = delete;
 
-	void init();
 	void render(const glm::mat4& view, const glm::mat4& projection);
 	void update(float delta_time);
 
 	void addFirework(const glm::vec3& origin);
-	void initialiseBuffers();
 
-	GLuint getAliveCount() const;
+	GLuint getAliveCount();
 	void resetAliveCount();
 
 private:
 	void initBuffers();
 	void initShaders();
 
-	std::unordered_map<std::string, Shader*> shaders;
-	GLuint VBO, VAO, EBO;
+	std::unordered_map<std::string, std::unique_ptr<Shader>> shaders;
+	GLuint VBO, VAO;
 	GLuint positionsSSBO, velocitiesSSBO, aliveFlagSSBO;
 	GLuint atomicCounterBuffer;
 	GLuint drawIndirectBuffer;

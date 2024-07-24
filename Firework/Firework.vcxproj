@@ -146,8 +146,7 @@
     <ClCompile Include="glad.c" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Firework.cpp" />
-    <ClCompile Include="utils.cpp" />
-    <ClCompile Include="utils.h" />
+    <ClCompile Include="Shader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />

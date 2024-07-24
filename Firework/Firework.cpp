@@ -1,11 +1,22 @@
 ﻿#include "Firework.h"
 #include <glad/glad.h>
-#include <vector>
+
 #include <glm/vec4.hpp>
 #include <glm/gtc/constants.hpp>
 #include <glm/gtc/random.hpp>
 
-#include "utils.h"
+#include <vector>
+
+
+float quadVertices[] = {
+        0.0f, 0.01f, 0.0f, 0.01f,
+        0.01f, 0.0f, 0.01f, 0.0f,
+        0.0f, 0.0f, 0.0f, 0.0f,
+
+        0.0f, 0.01f, 0.0f, 0.01f,
+        0.01f, 0.01f, 0.01f, 0.01f,
+        0.01f, 0.0f, 0.01f, 0.0f
+};
 
 Firework::Firework()
 {
@@ -19,13 +30,8 @@ Firework::Firework()
 
 Firework::~Firework()
 {
-    for (auto const& pair : shaders)
-    {
-        delete pair.second;
-    }
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
     glDeleteBuffers(1, &positionsSSBO);
     glDeleteBuffers(1, &velocitiesSSBO);
     glDeleteBuffers(1, &aliveFlagSSBO);
@@ -35,33 +41,34 @@ Firework::~Firework()
 
 void Firework::initShaders()
 {
-    shaders["particleShader"] = new Shader("shaders/particle.vert", "shaders/particle.frag");
-    shaders["computeShaderUpdate"] = new Shader("shaders/particleUpdate.comp");
-    shaders["computeShaderPrefix"] = new Shader("shaders/particlePrefix.comp");
-    shaders["computeShaderTrail"] = new Shader("shaders/particleTrail.comp");
-    shaders["computeShaderReorder"] = new Shader("shaders/particleReorder.comp");
+    shaders["particleShader"] = std::make_unique<Shader>("shaders/particle.vert", "shaders/particle.frag");
+    shaders["computeShaderUpdate"] = std::make_unique<Shader>("shaders/particleUpdate.comp");
+    shaders["computeShaderPrefix"] = std::make_unique<Shader>("shaders/particlePrefix.comp");
+    shaders["computeShaderTrail"] = std::make_unique<Shader>("shaders/particleTrail.comp");
+    shaders["computeShaderReorder"] = std::make_unique<Shader>("shaders/particleReorder.comp");
 }
 
 void Firework::initBuffers()
 {
     // initialising firework VAO
-    glGenVertexArrays(1, &VAO);
+    glGenVertexArrays(1, &this->VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &atomicCounterBuffer);
+    glGenBuffers(1, &positionsSSBO);
+    glGenBuffers(1, &velocitiesSSBO);
+    glGenBuffers(1, &aliveFlagSSBO);
+	glGenBuffers(1, &drawIndirectBuffer);
     glBindVertexArray(VAO);
 
     // initialising particle vertices buffer
-    glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
 
-    // initialising indices element buffer
-    glGenBuffers(1, &EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indexes), indexes, GL_STATIC_DRAW);
+    glBindVertexArray(0);
 
     // initialising alive count to 0 for atomic counter buffer
-    glGenBuffers(1, &atomicCounterBuffer);
     glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
     GLuint initial = 0;
     glBufferData(GL_ATOMIC_COUNTER_BUFFER, sizeof(GLuint), &initial, GL_DYNAMIC_DRAW);
@@ -69,7 +76,6 @@ void Firework::initBuffers()
     glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
 
     // initialising positions SSBO with default values
-    glGenBuffers(1, &positionsSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, positionsSSBO);
     std::vector default_values(max_particles, glm::vec4(-1.0f, -1.0f, -1.0f, -1.0f));
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * max_particles, default_values.data(), GL_DYNAMIC_DRAW);
@@ -77,14 +83,12 @@ void Firework::initBuffers()
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     // initialising velocity SSBO with default values
-    glGenBuffers(1, &velocitiesSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, velocitiesSSBO);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * max_particles, default_values.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, velocitiesSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     // initialising alive flag SSBO with default values
-    glGenBuffers(1, &aliveFlagSSBO);
     std::vector<int> flag_default(max_particles, 0);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, aliveFlagSSBO);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(int) * max_particles, flag_default.data(), GL_DYNAMIC_DRAW);
@@ -92,9 +96,8 @@ void Firework::initBuffers()
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     // initialising indirect buffer
-    glGenBuffers(1, &drawIndirectBuffer);
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndirectBuffer);
-    cmd = { 6, 1, 0, 0, 0 };
+    cmd = { 6, 1, 0, 0, 0};
     glBufferData(GL_DRAW_INDIRECT_BUFFER, sizeof(cmd), &cmd, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
 
@@ -116,14 +119,11 @@ void Firework::initBuffers()
 
 void Firework::render(const glm::mat4& view, const glm::mat4& projection)
 {
-    glBindVertexArray(VAO);
     GLuint count = getAliveCount();
-    cmd = { 6, count, 0, 0 };
+    cmd = { 6, count, 0, 0, 0 };
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndirectBuffer);
-    glBufferData(GL_DRAW_INDIRECT_BUFFER, sizeof(DrawElementsIndirectCommand), &cmd, GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, sizeof(cmd), &cmd);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
-	/*shaders["floorShader"]->use();
-    shaders["floorShader"]->setVec3("colour", glm::vec3(0.5f, 0.5f, 0.5f));*/
 
     shaders["particleShader"]->use();
 	glm::mat4 model = glm::mat4(1.0f);
@@ -133,7 +133,8 @@ void Firework::render(const glm::mat4& view, const glm::mat4& projection)
 
     if (count > 0)
     {
-		glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr);
+		glBindVertexArray(VAO);
+		glDrawArraysIndirect(GL_TRIANGLES, nullptr);
         glMemoryBarrier(GL_ALL_BARRIER_BITS);
     }
 	glBindVertexArray(0);
@@ -149,7 +150,6 @@ void Firework::render(const glm::mat4& view, const glm::mat4& projection)
 
 void Firework::update(float delta_time)
 {
-    glBindVertexArray(VAO);
     resetAliveCount();
 
     // update particle data
@@ -157,17 +157,17 @@ void Firework::update(float delta_time)
     shaders["computeShaderUpdate"]->setFloat("deltaTime", delta_time);
     shaders["computeShaderUpdate"]->setVec3("grav", glm::vec3(0.0f, -2.81f, 0.0));
     shaders["computeShaderUpdate"]->setFloat("minVelocity", 0.1f);
-    glDispatchCompute(max_particles / 256, 1, 1);
+    glDispatchCompute((max_particles + 255) / 256, 1, 1);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
     // prefix sum
     /*shaders["computeShaderPrefix"]->use();
-    glDispatchCompute(max_particles / 1024, 1, 1);
+    glDispatchCompute((max_particles + 1023) / 1024, 1, 1);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
 
     // reorder
     /*shaders["computeShaderReorder"]->use();
-    glDispatchCompute(max_particles / 1024, 1, 1);
+    glDispatchCompute((max_particles + 1023) / 1024, 1, 1);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
 
     // add trail particles
@@ -185,17 +185,16 @@ void Firework::update(float delta_time)
     /*shaders["computeShaderTrail"]->use();
     shaders["computeShaderTrail"]->setFloat("trailRate", 0.9f);
     shaders["computeShaderTrail"]->setUInt("maxParticle", max_particles);
-    glDispatchCompute(particle_num / 256, 1, 1);
+    glDispatchCompute((particle_num + 255) / 256, 1, 1);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
 
     /*glBindVertexArray(floorVAO);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    glBindVertexArray(0);	*/	
+    glBindVertexArray(0);	*/
 }
 
 void Firework::resetAliveCount()
 {
-    glBindVertexArray(VAO);
     glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
     GLuint initial = 0;
     glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &initial);
@@ -204,7 +203,6 @@ void Firework::resetAliveCount()
 
 void Firework::addFirework(const glm::vec3& origin)
 {
-    glBindVertexArray(VAO);
     GLuint aliveIndex = getAliveCount();
     if (aliveIndex + particle_num < max_particles)
     {
@@ -229,11 +227,10 @@ void Firework::addFirework(const glm::vec3& origin)
         std::cout << "exceeded max particle num\n";
 }
 
-GLuint Firework::getAliveCount() const
+GLuint Firework::getAliveCount()
 {
-    glBindVertexArray(VAO);
     glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
-    GLuint* num = (GLuint*)glMapBufferRange(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), GL_MAP_READ_BIT);
+    GLuint* num = static_cast<GLuint*>(glMapBufferRange(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), GL_MAP_READ_BIT));
     GLuint count = num[0];
     glUnmapBuffer(GL_ATOMIC_COUNTER_BUFFER);
     return count;
