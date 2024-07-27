@@ -21,8 +21,8 @@ float quadVertices[] = {
 Firework::Firework()
 {
     firework_lifetime = 3.0f;
-    particle_num = 8192;
-    max_particles = 204800;
+    particle_num = 7680;
+    max_particles = 25600;
 
 	initBuffers();
 	initShaders();
@@ -46,6 +46,7 @@ void Firework::initShaders()
     shaders["computeShaderPrefix"] = std::make_unique<Shader>("shaders/particlePrefix.comp");
     shaders["computeShaderTrail"] = std::make_unique<Shader>("shaders/particleTrail.comp");
     shaders["computeShaderReorder"] = std::make_unique<Shader>("shaders/particleReorder.comp");
+    shaders["computeShaderDenPre"] = std::make_unique<Shader>("shaders/particleDenPre.comp");
 }
 
 void Firework::initBuffers()
@@ -58,7 +59,8 @@ void Firework::initBuffers()
     glGenBuffers(1, &velocitiesSSBO);
     glGenBuffers(1, &aliveFlagSSBO);
 	glGenBuffers(1, &drawIndirectBuffer);
-    glBindVertexArray(VAO);
+    glGenBuffers(1, &fluidSSBO);
+	glBindVertexArray(VAO);
 
     // initialising particle vertices buffer
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -88,11 +90,17 @@ void Firework::initBuffers()
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, velocitiesSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, fluidSSBO);
+    std::vector<glm::vec4> fluid_default(max_particles, glm::vec4(1000.0f, 0.005f, 1.0f, -1.0f));
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * max_particles, fluid_default.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, fluidSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
     // initialising alive flag SSBO with default values
     std::vector<int> flag_default(max_particles, 0);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, aliveFlagSSBO);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(int) * max_particles, flag_default.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, aliveFlagSSBO);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, aliveFlagSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     // initialising indirect buffer
@@ -151,15 +159,25 @@ void Firework::render(const glm::mat4& view, const glm::mat4& projection)
 void Firework::update(float delta_time)
 {
     resetAliveCount();
+    /*shaders["computeShaderDenPre"]->use();
+    shaders["computeShaderDenPre"]->setFloat("smoothing_length", 1.0f);
+    shaders["computeShaderDenPre"]->setFloat("rest_density", 1000.0f);
+    shaders["computeShaderDenPre"]->setFloat("pressure_stiffness", 2000.0f);
+    glDispatchCompute((cmd.instanceCount + 255) / 256, 1, 1);
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
 
     // update particle data
     shaders["computeShaderUpdate"]->use();
     shaders["computeShaderUpdate"]->setFloat("deltaTime", delta_time);
     shaders["computeShaderUpdate"]->setVec3("grav", glm::vec3(0.0f, -2.81f, 0.0));
-    shaders["computeShaderUpdate"]->setFloat("minVelocity", 0.1f);
+    shaders["computeShaderUpdate"]->setFloat("minVelocity", 0.01f);
+    shaders["computeShaderUpdate"]->setFloat("smoothing_length", 1.0f);
+    shaders["computeShaderUpdate"]->setFloat("viscosity_coefficient", 0.1f);
+    shaders["computeShaderUpdate"]->setFloat("restDensity", 1000.0f);
+    shaders["computeShaderUpdate"]->setUInt("preAliveCount", cmd.instanceCount);
     glDispatchCompute((max_particles + 255) / 256, 1, 1);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
-
+    
     // prefix sum
     /*shaders["computeShaderPrefix"]->use();
     glDispatchCompute((max_particles + 1023) / 1024, 1, 1);
@@ -213,7 +231,7 @@ void Firework::addFirework(const glm::vec3& origin)
             float theta = glm::linearRand(0.0f, glm::two_pi<float>());
             float phi = glm::linearRand(0.0f, glm::pi<float>());
             float speed = glm::linearRand(2.0f, 5.0f);
-            velocity.emplace_back(speed * sin(phi) * cos(theta), speed * sin(phi) * sin(theta), speed * cos(phi), firework_lifetime);
+            velocity.emplace_back(speed * 0.1 * sin(phi) * cos(theta), speed * 0.1 * sin(phi) * sin(theta), speed * 0.1 * cos(phi), firework_lifetime);
             positions.emplace_back(origin, firework_lifetime);
         }
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, positionsSSBO);

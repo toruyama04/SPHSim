@@ -34,4 +34,6 @@ private:
 	double last_x;
 	double last_y;
 	bool first_mouse;
+	unsigned int screen_width;
+	unsigned int screen_height;
 };

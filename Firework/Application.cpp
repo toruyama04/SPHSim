@@ -46,77 +46,74 @@ void Application::handleFramebufferSize(int width, int height)
     glViewport(0, 0, width, height);
 }
 
-void GLAPIENTRY gl_message_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
-    const GLchar* message, const void* user_param) {
-    if (severity != GL_DEBUG_SEVERITY_HIGH) {
-        return;
-    }
-    auto type_str = type == GL_DEBUG_TYPE_ERROR ? "[ERROR]"
-        : type == GL_DEBUG_TYPE_PERFORMANCE ? "[PERFORMANCE]"
-        : type == GL_DEBUG_TYPE_MARKER ? "[MARKER]"
-        : type == GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR ? "[DEPRECATED]"
-        : type == GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR ? "[UNDEFINED BEHAVIOR]" : "[OTHER]";
-    auto severity_str = severity == GL_DEBUG_SEVERITY_HIGH ? "[HIGH]"
-        : severity == GL_DEBUG_SEVERITY_MEDIUM ? "[MEDIUM]"
-        : severity == GL_DEBUG_SEVERITY_LOW ? "[LOW]" : "[NOTIFICATION]";
-    std::cerr << "OpenGL callback " << type_str << " " << severity_str << " " << message << std::endl;
-    if (type == GL_DEBUG_TYPE_ERROR && severity == GL_DEBUG_SEVERITY_HIGH) {
-        // exit(-1);
-    }
-}
-
 
 Application::Application(unsigned int screen_width, unsigned int screen_height, const char* title)
 {
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
     {
-        std::cerr << "failed to initialise GLFW\n";
-        return;
+        std::cerr << "Failed to initialize GLFW\n";
+        std::exit(EXIT_FAILURE); // Exit if GLFW initialization fails
     }
+
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+
     window = glfwCreateWindow(screen_width, screen_height, title, nullptr, nullptr);
     if (window == nullptr)
     {
-        std::cout << "Failed to create GLFW window\n";
-        return;
+        std::cerr << "Failed to create GLFW window\n";
+        glfwTerminate();
+        std::exit(EXIT_FAILURE); // Exit if window creation fails
     }
+
     glfwMakeContextCurrent(window);
     glfwSetWindowUserPointer(window, this);
     glfwSetCursorPosCallback(window, glfw_cursor_pos_callback);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
     if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
         std::cerr << "Failed to load OpenGL functions\n";
-        return;
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        std::exit(EXIT_FAILURE); // Exit if GLAD initialization fails
     }
 
-    int flags;
-    glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
-    if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
-        glEnable(GL_DEBUG_OUTPUT);
-        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS); // Ensure synchronous output
-        glDebugMessageCallback(gl_message_callback, nullptr);
-        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+    const GLubyte* version = glGetString(GL_VERSION);
+    if (version != nullptr) {
+        std::cout << "OpenGL Version: " << version << std::endl;
     }
+    else {
+        std::cerr << "Failed to retrieve OpenGL version\n";
+    }
+
     int frame_width, frame_height;
     glfwGetFramebufferSize(window, &frame_width, &frame_height);
+    if (frame_width == 0 || frame_height == 0) {
+        std::cerr << "Failed to get framebuffer size\n";
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        std::exit(EXIT_FAILURE); // Exit if framebuffer size retrieval fails
+    }
     glViewport(0, 0, frame_width, frame_height);
-    std::cout << "GL_VERSION: " << glGetString(GL_VERSION) << std::endl;
-    std::cout << "GL_RENDERER: " << glGetString(GL_RENDERER) << std::endl;
 
     first_mouse = true;
     deltaTime = 0.0f;
     lastFrame = 0.0f;
+    this->screen_height = screen_height;
+    this->screen_width = screen_width;
     last_x = static_cast<double>(screen_width) / 2.0f;
     last_y = static_cast<double>(screen_height) / 2.0f;
 
     camera = new Camera(glm::vec3(0.0f, 0.0f, 15.0f));
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
+    if (camera == nullptr) {
+        std::cerr << "Failed to create camera\n";
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        std::exit(EXIT_FAILURE); // Exit if camera creation fails
+    }
 }
 
 Application::~Application()
@@ -139,16 +136,14 @@ void Application::run()
         lastFrame = currentFrame;
 
         processInput();
-        glClearColor(0.05f, 0.05f, 0.05f, 0.05f);
+        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 
-        /*firework->update(deltaTime);
-        checkOpenGLErrors("firework->update");
+        firework->update(deltaTime);
 
         glm::mat4 view = camera->GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(camera->Zoom), static_cast<float>(screen_width) / static_cast<float>(screen_height), 0.1f, 100.0f);
 
         firework->render(view, projection);
-        checkOpenGLErrors("firework->render");*/
 
         // add fireworks based on user input?
         // add floor class or something like that
