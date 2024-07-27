@@ -34,10 +34,11 @@ private:
 	void initShaders();
 
 	std::unordered_map<std::string, std::unique_ptr<Shader>> shaders;
-	GLuint VBO, VAO;
+	GLuint VBO, VAO, EBO;
 	GLuint positionsSSBO, velocitiesSSBO, aliveFlagSSBO;
 	GLuint atomicCounterBuffer;
 	GLuint drawIndirectBuffer;
+	GLuint particleTexture;
 	unsigned int particle_num, max_particles;
 	float firework_lifetime;
 	DrawElementsIndirectCommand cmd;

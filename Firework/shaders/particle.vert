@@ -1,8 +1,10 @@
 #version 460 core
 
 layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec2 aTexCoord;
 
-out vec4 colour;
+out float colour;
+out vec2 TexCoord;
 
 layout(std430, binding = 0) buffer Positions {
     vec4 positions[];
@@ -16,9 +18,15 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-void main() {
-    vec3 quadVertexPosition = aPos + positions[gl_InstanceID].xyz;
-    gl_Position = projection * view * model * vec4(quadVertexPosition, 1.0f);
 
-    colour = vec4(1.0, 1.0, 1.0, positions[gl_InstanceID].w / velocity[gl_InstanceID].w);
+void main() {
+    vec3 right = vec3(view[0][0], view[1][0], view[2][0]);
+    vec3 up = vec3(view[0][1], view[1][1], view[2][1]);
+
+    vec3 pos = positions[gl_InstanceID].xyz + (right * (aPos.x * 2.0 - 1.0)) + (up * (aPos.y * 2.0 - 1.0));
+
+    gl_Position = projection * view * model * vec4(pos, 1.0f);
+
+    colour = positions[gl_InstanceID].w / velocity[gl_InstanceID].w;
+    TexCoord = aTexCoord;
 }

@@ -1,9 +1,15 @@
 #version 460 core
 
-in vec4 colour;
+in float alpha;
+in vec2 TexCoord;
 
 out vec4 FragColor;
 
+uniform sampler2D particleTexture;
+
 void main() {
-    FragColor = colour;
+    vec4 texColor = texture(particleTexture, TexCoord);
+    vec4 finalColor = texColor;
+    finalColor.a = alpha;
+    FragColor = finalColor;
 }

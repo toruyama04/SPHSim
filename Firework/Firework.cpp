@@ -1,5 +1,8 @@
 ﻿#include "Firework.h"
 #include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
+#include "stb_image.h"
 
 #include <glm/vec4.hpp>
 #include <glm/gtc/constants.hpp>
@@ -8,21 +11,25 @@
 #include <vector>
 
 
-float quadVertices[] = {
-        0.0f, 0.01f, 0.0f, 0.01f,
-        0.01f, 0.0f, 0.01f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f,
 
-        0.0f, 0.01f, 0.0f, 0.01f,
-        0.01f, 0.01f, 0.01f, 0.01f,
-        0.01f, 0.0f, 0.01f, 0.0f
+float vertices[] = {
+    // positions         // texture coords
+     0.1f,  0.1f, 0.0f,   1.0f, 1.0f, // top right
+     0.1f, -0.1f, 0.0f,   1.0f, 0.0f, // bottom right
+    -0.1f, -0.1f, 0.0f,   0.0f, 0.0f, // bottom left
+    -0.1f,  0.1f, 0.0f,   0.0f, 1.0f  // top left 
+};
+
+unsigned int indices[] = {
+    0, 1, 3,
+    1, 2, 3
 };
 
 Firework::Firework()
 {
     firework_lifetime = 3.0f;
-    particle_num = 7680;
-    max_particles = 25600;
+    particle_num = 256;
+    max_particles = 102400;
 
 	initBuffers();
 	initShaders();
@@ -43,9 +50,9 @@ void Firework::initShaders()
 {
     shaders["particleShader"] = std::make_unique<Shader>("shaders/particle.vert", "shaders/particle.frag");
     shaders["computeShaderUpdate"] = std::make_unique<Shader>("shaders/particleUpdate.comp");
-    //shaders["computeShaderPrefix"] = std::make_unique<Shader>("shaders/particlePrefix.comp");
-    //shaders["computeShaderTrail"] = std::make_unique<Shader>("shaders/particleTrail.comp");
-    //shaders["computeShaderReorder"] = std::make_unique<Shader>("shaders/particleReorder.comp");
+    shaders["computeShaderPrefix"] = std::make_unique<Shader>("shaders/particlePrefix.comp");
+    shaders["computeShaderTrail"] = std::make_unique<Shader>("shaders/particleTrail.comp");
+    shaders["computeShaderReorder"] = std::make_unique<Shader>("shaders/particleReorder.comp");
     //shaders["computeShaderDenPre"] = std::make_unique<Shader>("shaders/particleDenPre.comp");
 }
 
@@ -59,13 +66,37 @@ void Firework::initBuffers()
     glGenBuffers(1, &velocitiesSSBO);
     glGenBuffers(1, &aliveFlagSSBO);
 	glGenBuffers(1, &drawIndirectBuffer);
+    glGenBuffers(1, &EBO);
 	glBindVertexArray(VAO);
 
     // initialising particle vertices buffer
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), nullptr);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3*sizeof(float)));
+
+    glGenTextures(1, &particleTexture);
+    glBindTexture(GL_TEXTURE_2D, particleTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    int width, height, nrChannels;
+    unsigned char* data = stbi_load("smoke.png", &width, &height, &nrChannels, 0);
+    if (data)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else
+        std::cout << "Failed to load texture\n";
+    stbi_image_free(data);
 
     glBindVertexArray(0);
 
@@ -135,8 +166,11 @@ void Firework::render(const glm::mat4& view, const glm::mat4& projection)
 
     if (count > 0)
     {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBindTexture(GL_TEXTURE_2D, particleTexture);
 		glBindVertexArray(VAO);
-		glDrawArraysIndirect(GL_TRIANGLES, nullptr);
+		glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr);
         glMemoryBarrier(GL_ALL_BARRIER_BITS);
     }
 	glBindVertexArray(0);
@@ -166,7 +200,7 @@ void Firework::update(float delta_time)
     shaders["computeShaderUpdate"]->setFloat("deltaTime", delta_time);
     shaders["computeShaderUpdate"]->setVec3("grav", glm::vec3(0.0f, -2.81f, 0.0));
     shaders["computeShaderUpdate"]->setFloat("noiseScale", 0.8f); // Scale for noise field
-    shaders["computeShaderUpdate"]->setFloat("noiseSpeed", 0.5f); // Speed for noise field
+    shaders["computeShaderUpdate"]->setFloat("noiseSpeed", 0.4f); // Speed for noise field
     shaders["computeShaderUpdate"]->setFloat("dampingFactor", 0.995f); // Damping factor
     glDispatchCompute((max_particles + 255) / 256, 1, 1);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
@@ -174,12 +208,12 @@ void Firework::update(float delta_time)
     // prefix sum
     /*shaders["computeShaderPrefix"]->use();
     glDispatchCompute((max_particles + 1023) / 1024, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
     // reorder
-    /*shaders["computeShaderReorder"]->use();
+    shaders["computeShaderReorder"]->use();
     glDispatchCompute((max_particles + 1023) / 1024, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
     // add trail particles
     /** what happens when we add more fireworks?
@@ -187,13 +221,13 @@ void Firework::update(float delta_time)
      * change dispatch to the number of alive particles (getAliveCount())
      * in computeShader, add another or extend aliveFlag SSBO to indicate whether trail or not
      * change particleTrail so it adds to aliveCount if the aliveparticle is a firework particle, else return early
-     */
+     #1#
     /* second issue: since aliveCount contains trail particles, they are being updated as normal
      *      however, they are not differentiated from firework particles. May just include another
      *      SSBO for trail or not and another atomic counter for finding the right index to draw
      *      the trail particle.
-     */
-    /*shaders["computeShaderTrail"]->use();
+     #1#
+    shaders["computeShaderTrail"]->use();
     shaders["computeShaderTrail"]->setFloat("trailRate", 0.9f);
     shaders["computeShaderTrail"]->setUInt("maxParticle", max_particles);
     glDispatchCompute((particle_num + 255) / 256, 1, 1);
