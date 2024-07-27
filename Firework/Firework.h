@@ -38,7 +38,6 @@ private:
 	GLuint positionsSSBO, velocitiesSSBO, aliveFlagSSBO;
 	GLuint atomicCounterBuffer;
 	GLuint drawIndirectBuffer;
-	GLuint particleTexture;
 	unsigned int particle_num, max_particles;
 	float firework_lifetime;
 	DrawElementsIndirectCommand cmd;

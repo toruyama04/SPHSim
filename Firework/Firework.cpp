@@ -13,11 +13,11 @@
 
 
 float vertices[] = {
-    // positions         // texture coords
-     0.1f,  0.1f, 0.0f,   1.0f, 1.0f, // top right
-     0.1f, -0.1f, 0.0f,   1.0f, 0.0f, // bottom right
-    -0.1f, -0.1f, 0.0f,   0.0f, 0.0f, // bottom left
-    -0.1f,  0.1f, 0.0f,   0.0f, 1.0f  // top left 
+    // positions
+     0.01f,  0.01f, 0.0f,
+     0.01f, -0.01f, 0.0f,
+    -0.01f, -0.01f, 0.0f,
+    -0.01f,  0.01f, 0.0f
 };
 
 unsigned int indices[] = {
@@ -28,7 +28,7 @@ unsigned int indices[] = {
 Firework::Firework()
 {
     firework_lifetime = 3.0f;
-    particle_num = 256;
+    particle_num = 10240;
     max_particles = 102400;
 
 	initBuffers();
@@ -77,11 +77,9 @@ void Firework::initBuffers()
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), nullptr);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3*sizeof(float)));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
 
-    glGenTextures(1, &particleTexture);
+    /*glGenTextures(1, &particleTexture);
     glBindTexture(GL_TEXTURE_2D, particleTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -96,7 +94,7 @@ void Firework::initBuffers()
     }
     else
         std::cout << "Failed to load texture\n";
-    stbi_image_free(data);
+    stbi_image_free(data);*/
 
     glBindVertexArray(0);
 
@@ -166,9 +164,6 @@ void Firework::render(const glm::mat4& view, const glm::mat4& projection)
 
     if (count > 0)
     {
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glBindTexture(GL_TEXTURE_2D, particleTexture);
 		glBindVertexArray(VAO);
 		glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr);
         glMemoryBarrier(GL_ALL_BARRIER_BITS);
@@ -208,12 +203,12 @@ void Firework::update(float delta_time)
     // prefix sum
     /*shaders["computeShaderPrefix"]->use();
     glDispatchCompute((max_particles + 1023) / 1024, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
 
     // reorder
-    shaders["computeShaderReorder"]->use();
+    /*shaders["computeShaderReorder"]->use();
     glDispatchCompute((max_particles + 1023) / 1024, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
 
     // add trail particles
     /** what happens when we add more fireworks?
@@ -221,13 +216,13 @@ void Firework::update(float delta_time)
      * change dispatch to the number of alive particles (getAliveCount())
      * in computeShader, add another or extend aliveFlag SSBO to indicate whether trail or not
      * change particleTrail so it adds to aliveCount if the aliveparticle is a firework particle, else return early
-     #1#
+     */
     /* second issue: since aliveCount contains trail particles, they are being updated as normal
      *      however, they are not differentiated from firework particles. May just include another
      *      SSBO for trail or not and another atomic counter for finding the right index to draw
      *      the trail particle.
-     #1#
-    shaders["computeShaderTrail"]->use();
+     */
+    /*shaders["computeShaderTrail"]->use();
     shaders["computeShaderTrail"]->setFloat("trailRate", 0.9f);
     shaders["computeShaderTrail"]->setUInt("maxParticle", max_particles);
     glDispatchCompute((particle_num + 255) / 256, 1, 1);
