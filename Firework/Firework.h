@@ -35,7 +35,7 @@ private:
 
 	std::unordered_map<std::string, std::unique_ptr<Shader>> shaders;
 	GLuint VBO, VAO;
-	GLuint positionsSSBO, velocitiesSSBO, aliveFlagSSBO, fluidSSBO;
+	GLuint positionsSSBO, velocitiesSSBO, aliveFlagSSBO;
 	GLuint atomicCounterBuffer;
 	GLuint drawIndirectBuffer;
 	unsigned int particle_num, max_particles;
