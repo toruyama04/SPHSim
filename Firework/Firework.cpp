@@ -43,10 +43,10 @@ void Firework::initShaders()
 {
     shaders["particleShader"] = std::make_unique<Shader>("shaders/particle.vert", "shaders/particle.frag");
     shaders["computeShaderUpdate"] = std::make_unique<Shader>("shaders/particleUpdate.comp");
-    shaders["computeShaderPrefix"] = std::make_unique<Shader>("shaders/particlePrefix.comp");
-    shaders["computeShaderTrail"] = std::make_unique<Shader>("shaders/particleTrail.comp");
-    shaders["computeShaderReorder"] = std::make_unique<Shader>("shaders/particleReorder.comp");
-    shaders["computeShaderDenPre"] = std::make_unique<Shader>("shaders/particleDenPre.comp");
+    //shaders["computeShaderPrefix"] = std::make_unique<Shader>("shaders/particlePrefix.comp");
+    //shaders["computeShaderTrail"] = std::make_unique<Shader>("shaders/particleTrail.comp");
+    //shaders["computeShaderReorder"] = std::make_unique<Shader>("shaders/particleReorder.comp");
+    //shaders["computeShaderDenPre"] = std::make_unique<Shader>("shaders/particleDenPre.comp");
 }
 
 void Firework::initBuffers()

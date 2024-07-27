@@ -26,7 +26,6 @@ public:
 private:
 	Firework* firework = nullptr;
 
-	GLuint VAO;
 	float deltaTime;
 	float lastFrame;
 	GLFWwindow* window = nullptr;
