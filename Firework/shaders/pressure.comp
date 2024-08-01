@@ -1,0 +1,82 @@
+
+
+// computing pressure from equation of state
+/*
+	double targetDensity <- uniform;
+	double eosScale = targetDensity * square(_speedOfSound <- uniform) / eosExponent <- uniform;
+	for each particle:
+		forces[i].y (pressure) = computePressureFromEos(forces[i].x, targetDensity, eosScale, eosExponent());
+
+	double computePressureFromEos(density, targetDensity, eosScale, eosExponent, negativePressureScale)
+	double p = eosScale / eosExponent * (pow((density / targetDensity), eosExponent) - 1.0);
+	if (p < 0)
+		p *= negativePressureScale;
+
+	return p;
+*/
+
+// acculumating pressure force
+/*
+	double massSquared = square(forces[i].w) (mass is same for each particle?);
+	for each particle:
+		for each neighbour 
+			dist from particle[i] to neighbour[j]
+			if (dist > 0.0)
+				vec3 dir = (pos[j] - pos[i]) / dist;
+				forces[i].y -= massSquared * (forces[i].y / (forces[i].x * forces[i].x) + forces[j].y / (forces[j].x * forces[j].x)) * gradient(dist, dir); 
+*/
+
+// computing viscosity
+/*
+	double massSquared
+	for each particle:
+		for each neighbour
+			get distance
+			totalforce += viscosityCoefficient <- uniform? * massSqaured * (velocity[j] - velocity[i]) / forces[j].x * secondDerivative(dist);
+*/
+
+// predictive-corrective incompressible SPH, error-correction algorithm which assumes the difference between measured and desired density is the error
+// pressure with prediction. the problem with the previous implementation is that it requires a very short time-step. 
+// it predicts the future density profile and then calculates the correction force to reduce the density error. 
+
+/*
+	temporary position, velocity, pressure buffers?
+	accumulatePressureForce(delta_time, targetDensity)
+		for each particle:
+			set the pressure to 0.0
+			set tempPressure to 0 vectors;
+
+			for k number of iterations: maxNumberofIterations <- uniform:
+				for each particle:
+					tempVelocity[i] = velocity[i] + delta_time / forces[i].w * (f (force before this function call) + tempPressure[i]);
+					tempPosition[i] = positions[i] + delta_time * tempVelocity[i];
+
+		for each particle:
+			double weightSum = 0.0;
+			for each neighbour:
+				dist = tempPositions[j] to tempPosition[i];
+				weightSum += kernel(dist);
+			weightSum += kernel(0);
+
+			density = mass * weightSum;
+			densityError = (density - targetDensity);
+			double pressure = delta * densityError;
+
+			if (pressure < 0.0)
+				pressure *= negativePressureScale();
+				densityError *= negativePressureScale();
+
+			forces[i].y += pressure;
+			predicted density[i] = density;
+			densityErrors[i] = densityError;
+
+		maxDensityError = 0.0;
+		for number of particles:
+			maxDensityError = absmax(maxDensityError, densityErrors[i]);
+
+		densityErrorRatio = maxDensityError / targetDensity;
+
+		if (fabs(densityErrorRatio) < maxDensityErrorRatio)
+			break;
+
+*/

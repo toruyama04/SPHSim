@@ -1,8 +1,10 @@
 #version 460 core
 
 layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec2 aTexCoord;
 
 out float colour;
+out vec2 texCoord;
 
 layout(std430, binding = 0) buffer Positions {
     vec4 positions[];
@@ -24,6 +26,6 @@ void main() {
     vec3 pos = positions[gl_InstanceID].xyz + (right * (aPos.x * 2.0 - 1.0)) + (up * (aPos.y * 2.0 - 1.0));
 
     gl_Position = projection * view * model * vec4(pos, 1.0f);
-
+    texCoord = aTexCoord;
     colour = positions[gl_InstanceID].w / velocity[gl_InstanceID].w;
 }

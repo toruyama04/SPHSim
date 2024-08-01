@@ -1,10 +1,18 @@
 #version 460 core
 
 in float alpha;
+in vec2 texCoord;
+
+uniform sampler2D particleTexture;
 
 out vec4 FragColor;
 
-
 void main() {
-    FragColor = vec4(1.0, 1.0, 1.0, alpha);
+    vec4 textureColor = texture(particleTexture, texCoord);
+    textureColor.a = alpha;
+    FragColor = textureColor;
+
+    // Premultiplied alpha blending
+    if (FragColor.a < 0.1)
+        discard;
 }

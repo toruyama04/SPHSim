@@ -33,6 +33,39 @@
     <ClCompile Include="stb_image.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="BoundingBox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Array3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Size3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CellCenteredScalarGrid3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VertexCenteredScalarGrid3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CollocatedVectorGrid3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CellCenteredVectorGrid3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VertexCenteredVectorGrid3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FaceCenteredGrid3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ScalarGrid3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GridSystemData3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader.h">
@@ -50,6 +83,48 @@
     <ClInclude Include="stb_image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Field.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Grid.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BoundingBox.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Array3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Size3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ScalarGrid3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VectorGrid3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CellCenteredScalarGrid3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VertexCenteredScalarGrid3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CollocatedVectorGrid3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CellCenteredVectorGrid3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VertexCenteredVectorGrid3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FaceCenteredGrid3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GridSystemData3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\floor.frag" />
@@ -61,6 +136,10 @@
     <None Include="shaders\particleTrail.comp" />
     <None Include="shaders\particleReorder.comp" />
     <None Include="shaders\particleDenPre.comp" />
+    <None Include="shaders\particleInsertionToGrid.comp" />
+    <None Include="shaders\particleNeighbourSearch.comp" />
+    <None Include="shaders\pressure.comp" />
+    <None Include="gridUpdate.comp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="smoke.png">

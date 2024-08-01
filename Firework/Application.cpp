@@ -126,6 +126,8 @@ Application::~Application()
 
 void Application::run()
 {
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	while (!glfwWindowShouldClose(window))
 	{
         glfwPollEvents();
@@ -136,7 +138,7 @@ void Application::run()
         lastFrame = currentFrame;
 
         processInput();
-        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+        //glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 
         firework->update(deltaTime);
 
