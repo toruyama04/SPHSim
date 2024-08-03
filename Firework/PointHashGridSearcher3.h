@@ -23,7 +23,8 @@ private:
 
 	void getNearbyKeys(const glm::vec3& position, size_t* bucketIndices) const;
 
-	GLuint gridSSBO, neighboursSSBO;
+	// grid holds start/end index of neighboursSSBO for each grid. 
+	GLuint gridSSBO, neighboursSSBO, particleIndicesSSBO;
 
 	double _gridSpacing = 1.0;
 	Size3<int> _resolution = Size3<int>(50, 100, 50);

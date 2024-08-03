@@ -79,7 +79,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="PointHashGridSearcher3.cpp">
-      <Filter>Header Files</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -170,6 +170,7 @@
     <None Include="shaders\particleKernel.comp" />
     <None Include="shaders\pressure.comp" />
     <None Include="gridUpdate.comp" />
+    <None Include="buildNeighbourList.comp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="smoke.png">

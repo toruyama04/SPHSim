@@ -49,7 +49,7 @@ Firework::~Firework()
     glDeleteBuffers(1, &drawIndirectBuffer);
 }
 
-void Firework::initSolvers()
+/*void Firework::initSolvers()
 {
     // GridFluidSolver initialise
     _gridSpacing = { 1, 1, 1 };
@@ -71,7 +71,7 @@ void Firework::initSolvers()
     // _smokeDensityId = addAdvectableScaleData() initial = 0.0;
     // temperature ?
 
-}
+} */
 
 void Firework::initShaders()
 {
@@ -192,6 +192,8 @@ void Firework::initBuffers()
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, VectorData);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+    // neighbour 8, grid 9
+
     // initialising indirect buffer
     /*glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndirectBuffer);
     cmd = { 6, 1, 0, 0, 0};
@@ -256,14 +258,7 @@ void Firework::render(const glm::mat4& view, const glm::mat4& projection)
 void Firework::update(float delta_time)
 {
     resetAliveCount();
-    /*shaders["computeShaderDenPre"]->use();
-    shaders["computeShaderDenPre"]->setFloat("smoothing_length", 1.0f);
-    shaders["computeShaderDenPre"]->setFloat("rest_density", 1000.0f);
-    shaders["computeShaderDenPre"]->setFloat("pressure_stiffness", 2000.0f);
-    glDispatchCompute((cmd.instanceCount + 255) / 256, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
 
-    // update particle data (seems to always call applyBoundaryCondition() after each step)
 	// beginAdvanceTimeStep();
     // resets force
     // find neighbours, store neighbour list
