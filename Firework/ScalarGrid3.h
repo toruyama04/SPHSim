@@ -8,9 +8,11 @@
 class ScalarGrid3 : public ScalarField3, public Grid3
 {
 public:
-	ScalarGrid3();
+	ScalarGrid3(GLuint bindingPoint);
 
 	virtual ~ScalarGrid3();
+
+	virtual Size3 dataSize() const = 0;
 
 	virtual glm::vec3<double> dataOrigin() const = 0;
 
@@ -18,19 +20,29 @@ public:
 	void resize(const Size3 resolution, const glm::vec3<double>& gridSpacing = glm::vec3<double>(1, 1, 1),
 		const glm::vec3<double>& origin = glm::vec3<double>(), double initialValue = 0.0);
 
+	// getters
 	const double& operator()(size_t i, size_t j, size_t k) const;
 
 	double& operator()(size_t i, size_t j, size_t k);
 
-	virtual Size3 dataSize() const = 0;
+	double laplacianAtDataPoint(size_t i, size_t j, size_t k) const;
 
 	glm::vec3<double> gradientAtDataPoint(size_t i, size_t j, size_t k) const;
 
 	glm::vec3<double> gradient(const glm::vec3<double>& x) const;
 
+	double laplacian(const glm::vec3& x) const override;
+
+	double sample(const glm::vec3& x) const override;
+
+	// forEachDataPointIndex
+
+	// getters and setters for the gridSSBO
+
 private:
-	// buffer?
-	std::vector<std::vector<std::vector<double>>> _data;
+	// buffer
+	GLuint _data;
+	// std::vector<std::vector<std::vector<double>>> _data;
 };
 
 typedef std::shared_ptr<ScalarGrid3> ScalarGrid3Ptr;

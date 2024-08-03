@@ -2,7 +2,10 @@
 
 Size3 VertexCenteredVectorGrid3::dataSize() const
 {
-	return resolution() + Size3(1, 1, 1);
+	if (resolution() != Size3(0, 0, 0))
+		return resolution() + Size3(1, 1, 1);
+	else
+		return Size3(0, 0, 0);
 }
 
 glm::vec3<double> VertexCenteredVectorGrid3::dataOrigin() const

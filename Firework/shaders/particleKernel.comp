@@ -1,0 +1,40 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(std430, binding = 0) buffer ParticlePositions {
+    vec4 positions[];
+};
+
+layout(std430, binding = 4) buffer GridData {
+    uint gridStartIndices[];
+    uint particleGridIndices[];
+};
+
+layout(std430, binding = 5) buffer NeighborData {
+    uint neighborList[];
+};
+
+uniform double kr;
+uniform double kr2;
+uniform double kr3;
+uniform double kr4;
+uniform double kr5;
+const double kPiD = 3.14159265358979323846264338327950288;
+
+double kernel(double dist)
+{
+    if (dist * dist >= kr2)
+    {
+        return 0.0;
+    } else {
+        double x = 1.0 - dist * dist / kr2;
+        return 315.0 / (64.0 * kPiD * h3) * x * x * x;
+    }
+}
+
+void main()
+{
+   
+}
+

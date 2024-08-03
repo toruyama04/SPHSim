@@ -1,16 +1,19 @@
 #include "ScalarGrid3.h"
 
-glm::vec3<double> ScalarGrid3::gradientAtDataPoint(size_t i, size_t j, size_t k)
-{
-	double left = _data[(i > 0) ? i - 1 : i][j][k];
-	double right = _data[(i + 1 < dataSize().x) ? i + 1 : i][j][k];
-	double down = _data[i][(j > 0) ? j - 1 : j][k];
-	double up = _data[i][(j + 1 < dataSize().y) ? j + 1 : j][k];
-	double back = _data[i][j][(k > 0) ? k - 1 : k];
-	double front = _data[i][j][(k + 1 < dataSize().z) ? k + 1 : k];
 
-	return 0.5 * glm::vec3<double>(right - left, up - down, front - back) / gridSpacing();
+
+
+ScalarGrid3::ScalarGrid3(GLuint bindingPoint)
+{
+	glGenBuffers(1, &_data);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _data);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, resolution().x * resolution().y * resolution().z * sizeof(double), nullptr, GL_DYNAMIC_DRAW);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingPoint, _data);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
+
+
+// getters do a mapping to get the data at a point
 
 // gradient at any given point, interpolates from nearby locations
 /*glm::vec3<double> ScalarGrid3::gradient(const glm::vec3<double>& x)

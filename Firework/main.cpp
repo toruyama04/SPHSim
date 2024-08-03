@@ -7,7 +7,7 @@
 
 
 glm::vec3 fireworkPos[2] = {
-    glm::vec3(0.0f, 3.0f, 0.0f),
+    glm::vec3(0.5f, 1.0f, 0.5f),
     glm::vec3(5.0f, 8.0f, -5.0f)
 };
 

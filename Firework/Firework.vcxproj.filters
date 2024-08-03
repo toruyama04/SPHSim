@@ -66,6 +66,21 @@
     <ClCompile Include="GridSystemData3.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SemiLagrangian3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PointNeighbourSearcher3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GridPressureSolver3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GridBackwardEulerDiffusionSolver3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PointHashGridSearcher3.cpp">
+      <Filter>Header Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader.h">
@@ -125,6 +140,21 @@
     <ClInclude Include="GridSystemData3.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SemiLagrangian3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GridBackwardEulerDiffusionSolver3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GridPressureSolver3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PointNeighbourSearcher3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PointHashGridSearcher3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\floor.frag" />
@@ -137,7 +167,7 @@
     <None Include="shaders\particleReorder.comp" />
     <None Include="shaders\particleDenPre.comp" />
     <None Include="shaders\particleInsertionToGrid.comp" />
-    <None Include="shaders\particleNeighbourSearch.comp" />
+    <None Include="shaders\particleKernel.comp" />
     <None Include="shaders\pressure.comp" />
     <None Include="gridUpdate.comp" />
   </ItemGroup>

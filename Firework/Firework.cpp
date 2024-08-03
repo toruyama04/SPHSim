@@ -35,7 +35,7 @@ Firework::Firework()
 
 	initBuffers();
 	initShaders();
-    initSolvers();
+    // initSolvers();
 }
 
 Firework::~Firework()
@@ -52,11 +52,24 @@ Firework::~Firework()
 void Firework::initSolvers()
 {
     // GridFluidSolver initialise
-
-    // GridSystemData initialise
+    _gridSpacing = { 1, 1, 1 };
+    _gridOrigin = { 0, 0, 0 };
     _velocity = std::make_shared<FaceCenteredGrid3>();
     _advectableVectorDataList.push_back(_velocity);
     _velocityIdx = 0;
+    // for each _scalarDataList, _vectorDataList, _advectableScalarDatalist, _advectableVectorDataList
+    // resize to 'resolution, gridSpacing, origin'
+
+    // set advectionSolver
+    //! _advectionSolver = std::make_unique<SemiLangrangian/CubicSemiLagrangian3>();
+    // set diffusionSolver
+    //! _diffusionSolver = std::make_unqiue<GridBackwardEulerDiffusion/GridForwardEulerDiffusionSolver3>();
+    // set pressureSolver
+    //! _pressureSolver = std::make_unique<GridFractionalSinglePhasePressure/GridSinglePhasePressureSolver3>();
+    // add scalarGrids for smoke, maybe temp
+
+    // _smokeDensityId = addAdvectableScaleData() initial = 0.0;
+    // temperature ?
 
 }
 
@@ -82,8 +95,10 @@ void Firework::initBuffers()
 	glGenBuffers(1, &drawIndirectBuffer);
     glGenBuffers(1, &EBO);
     glGenBuffers(1, &forcesSSBO);
-    glGenBuffers(1, &gridSSBO);
-    glGenBuffers(1, &neighboursSSBO);
+    glGenBuffers(1, &ScalarData);
+    glGenBuffers(1, &VectorData);
+    glGenBuffers(1, &newPositionSSBO);
+    glGenBuffers(1, &newVelocitySSBO);
 	glBindVertexArray(VAO);
 
     // initialising particle vertices buffer
@@ -96,7 +111,7 @@ void Firework::initBuffers()
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
 
-    glGenTextures(1, &particleTexture);
+    /*glGenTextures(1, &particleTexture);
     glBindTexture(GL_TEXTURE_2D, particleTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -111,7 +126,7 @@ void Firework::initBuffers()
     }
     else
         std::cout << "Failed to load texture\n";
-    stbi_image_free(data);
+    stbi_image_free(data);*/
 
     glBindVertexArray(0);
 
@@ -135,12 +150,21 @@ void Firework::initBuffers()
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, velocitiesSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, newPositionSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * _max_particles, default_values.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, newPositionSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, newVelocitySSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * _max_particles, default_values.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, newVelocitySSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     // initialising alive flag SSBO with default values
     std::vector<int> flag_default(_max_particles, 0);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, aliveFlagSSBO);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(int) * _max_particles, flag_default.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, aliveFlagSSBO);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, aliveFlagSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     // create forces SSBO for density, pressure, viscosity, mass
@@ -150,37 +174,29 @@ void Firework::initBuffers()
      * z = viscosity
      * w = mass
      * */
+    std::vector<glm::vec4> forceDefaults(_max_particles, glm::vec4(-1.0, -1.0, -1.0, 1e-3));
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, forcesSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * _max_particles, default_values.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, forcesSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * _max_particles, forceDefaults.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, forcesSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-    // create SSBO for grid indices
-    const int gridWidth = 128;
-    const int gridHeight = 128;
-    const int gridDepth = 128;
-    size_t numGridCells = gridWidth * gridHeight * gridDepth;
-    size_t gridStartSize = numGridCells * sizeof(GLuint);
-    size_t gridIndicesSize = _particle_num * sizeof(GLuint);
-    size_t totalSize = gridStartSize + gridIndicesSize;
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, gridSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, totalSize, nullptr, GL_DYNAMIC_DRAW);
-    std::vector<GLuint> initialGridStart(numGridCells, 0);
-    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, gridStartSize, initialGridStart.data());
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, gridSSBO);
+    // scalar data buffer
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ScalarData);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(double) * _max_particles, nullptr, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, ScalarData);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-    const int maxNeighbours = 32;
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, neighboursSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, _particle_num * maxNeighbours * sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, neighboursSSBO);
+    // vector data buffer
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, VectorData);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec3) * _max_particles, nullptr, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, VectorData);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     // initialising indirect buffer
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndirectBuffer);
+    /*glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndirectBuffer);
     cmd = { 6, 1, 0, 0, 0};
     glBufferData(GL_DRAW_INDIRECT_BUFFER, sizeof(cmd), &cmd, GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);*/
 
 	/*if (add_floor)
     {
@@ -249,47 +265,38 @@ void Firework::update(float delta_time)
 
     // update particle data (seems to always call applyBoundaryCondition() after each step)
 	// beginAdvanceTimeStep();
+    // resets force
+    // find neighbours, store neighbour list
+    // updateDensities
 
-    // computeExternalForces()
+    // accumulateNonPressureForce
     /**
-     * computeBuoyancyForce()
-     * computeGravity() - adds gravity to velocity field ?
+     * for each particle:
+     *      reset force 
+     *      force = mass * _gravity;
+     *      forces[i] += force;
+     *      using spiky kernel to calculate the viscosity
+     *      compute pressure from eos in physics_helpers.h
+     *
+     *  uniform: eos_exponent, negative_pressureScale, viscosit coefficient, psuedoViscosity coefficient, speedofsound, + more probs
     */
 
-    // computeViscosity()
+    // accumulatePressureForce
     /**
-     * store current velocity clone()
-     * pass that as well as the viscosity coefficient, dt...
-     * and call the diffusionSolver
-     * applyBoundaryCondition
+     * using spiky kernel, for each particle, for each neighbour, adjust their pressureForces[]
+     *
      */
 
-    // computePressure()
+    // timeIntegration
     /**
-     * store the current velocity same as previous step.
+     * for each particle:
+     *      set newVelocity = oldVelocity + dt * forces[i] / mass
+     *      set newPosition = oldPosition + dt * newVelocity
      */
-
-    // computeAdvection()
-    /**
-     * store current velocity
-     * for each AdvectableScalarData, call the advect function from advectionSolver
-     * for each AdvectableVectorData that isn't velocity:
-     *      check if collocatedVectorGrid3 ? call the advect : faceCentered and call advect
-     * for velocity advection: advect the velocity
-    */
 
     // endAdvanceTimeStep();
     /*
-     * computeDiffusion()
-     * copy the density, call the solve function from diffusionSolver
-     * copy the temperature, call the solve function from diffusionSolver
-     * update density and temperature by the decayFactor
-     *
-     * get number of particles
-     * set positions to the new positions buffer
-     * set velocities to the new velocities buffer
-     * callback function for extra post-processing
-     * we will also computePseudoViscosity (dampens noticeable noises)
+     * set oldPosition = newPosition, oldVelocity = newVelocity
      */
 
     shaders["computeShaderUpdate"]->use();
@@ -365,6 +372,8 @@ void Firework::addFirework(const glm::vec3& origin)
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, velocitiesSSBO);
         glBufferSubData(GL_SHADER_STORAGE_BUFFER, aliveIndex * sizeof(glm::vec4), sizeof(glm::vec4) * _particle_num, velocity.data());
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+        // change binding point number for each firework
+        _neighbour_grids.push_back(std::make_unique<PointHashGridSearcher3>(50, 100, 50, 2.0, _particle_num, 8));
     }
     else
         std::cout << "exceeded max particle num\n";

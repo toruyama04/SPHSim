@@ -16,6 +16,14 @@ public:
 
 	glm::vec3<double>& operator()(size_t i, size_t j, size_t k);
 
+	// divergenceAtDataPoint()
+	// curlAtDatapoint()
+	// sample, divergence, curl override
+
+
 private:
+	// buffer
 	std::vector<std::vector<std::vector<glm::vec3>>> _data;
+
+	// onReSize()
 };
