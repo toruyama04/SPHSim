@@ -2,11 +2,11 @@
 
 layout(local_size_x = 256) in;
 
-layout(binding = 9) buffer BinCountsSSBO {
+layout(std430, binding = 9) buffer particleNumPerBinSSBO {
     uint binCounts[];
 };
 
-layout(binding = 11) buffer PrefixSumSSBO {
+layout(std430, binding = 11) buffer prefixForBinReorderSSBO {
     uint prefixSum[];
 };
 

@@ -6,11 +6,11 @@ layout(std430, binding = 0) buffer Positions {
     vec4 positions[];
 };
 
-layout(std430, binding = 9) buffer BinIndex {
+layout(std430, binding = 9) buffer particleNumPerBinSSBO {
     uint bins[];
 };
 
-layout(std430, binding = 10) buffer ParticleBinIndex {
+layout(std430, binding = 10) buffer binIndexForParticleSSBO {
     uint particleBinIndex[];
 };
 

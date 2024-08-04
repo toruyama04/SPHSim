@@ -173,6 +173,9 @@
     <None Include="count.comp" />
     <None Include="prefix.comp" />
     <None Include="reorder.comp" />
+    <None Include="buildNeighbourList.comp" />
+    <None Include="neighbourIndices.comp" />
+    <None Include="reset.comp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="smoke.png">

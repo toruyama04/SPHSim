@@ -1,0 +1,46 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+// Buffer bindings
+layout(std430, binding = 8) buffer PrefixForNeighbourListSSBO {
+    atomic_uint neighbourPrefix[];
+};
+
+layout(std430, binding = 17) buffer PrefixSumSSBO {
+    uint prefixSum[];
+};
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    uint localSize = gl_WorkGroupSize.x;
+    uint numGroups = gl_NumWorkGroups.x;
+
+    if (idx >= gl_NumWorkGroups.x * localSize) return;
+
+    // Shared memory for prefix sum within the workgroup
+    shared uint localPrefix[256];
+
+    // Load data into shared memory
+    if (idx < localSize) {
+        localPrefix[idx] = neighbourPrefix[idx];
+    }
+    groupMemoryBarrier();
+    barrier();
+
+    // Perform prefix sum
+    uint offset = 1;
+    for (uint d = localSize >> 1; d > 0; d >>= 1) {
+        if (idx < d) {
+            uint temp = localPrefix[idx] + localPrefix[idx + d];
+            localPrefix[idx] = temp;
+        }
+        groupMemoryBarrier();
+        barrier();
+    }
+
+    // Write the final prefix sums back to the global memory
+    if (idx == 0) {
+        prefixSum[gl_WorkGroupID.x] = localPrefix[0];
+    }
+}

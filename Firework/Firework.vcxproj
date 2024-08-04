@@ -193,9 +193,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="count.comp" />
+    <None Include="buildNeighbourList.comp" />
     <None Include="gridUpdate.comp" />
+    <None Include="neighbourIndices.comp" />
     <None Include="prefix.comp" />
     <None Include="reorder.comp" />
+    <None Include="reset.comp" />
     <None Include="shaders\floor.frag" />
     <None Include="shaders\floor.vert" />
     <None Include="shaders\particle.frag" />

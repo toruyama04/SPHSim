@@ -28,14 +28,18 @@ private:
 
 	void getNearbyKeys(const glm::vec3& position, size_t* bucketIndices) const;
 
-	// grid holds start/end index of neighboursSSBO for each grid. 
-	GLuint binsSSBO, neighboursSSBO, particleIndicesSSBO, prefixSumSSBO, reorderedSSBO, tempBinOffsetSSBO;
+	GLuint particleNumPerBinSSBO, binIndexForParticleSSBO;
+	GLuint prefixForBinReorderSSBO, particlesOrderedByBinSSBO;
+	GLuint prefixForNeighbourListSSBO, tempBinOffsetSSBO, neighbourBinsIndicesForBinSSBO, neighbourListSSBO, totalNeigbourListSSBO;
+	GLuint startIndicesForNearbySSBO;
 
 	std::unique_ptr<Shader> countShader;
 	std::unique_ptr<Shader> prefixShader;
 	std::unique_ptr<Shader> reorderShader;
+	std::unique_ptr<Shader> generateNeighbourListShader;
+	std::unique_ptr<Shader> neighbourListStartIndicesShader;
 
 	double _gridSpacing = 1.0;
-	Size3<int> _resolution = Size3<int>(25, 50, 25);
+	Size3<int> _resolution = Size3<int>(15, 20, 15);
 	GLuint resolution;
 };
