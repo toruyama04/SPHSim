@@ -1,0 +1,51 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(std430, binding = 0) buffer Positions {
+    vec4 positions[];
+};
+
+layout(std430, binding = 9) buffer BinIndex {
+    uint bins[];
+};
+
+layout(std430, binding = 10) buffer ParticleBinIndex {
+    uint particleBinIndex[];
+};
+
+uniform uvec3 gridResolution;
+uniform vec3 gridOrigin;
+uniform float gridSpacing;
+uniform uint particleNum;
+
+uint computeGridIndex(vec3 gridPos)
+{
+    return uint(gridPos.x) + uint(gridPos.y) * gridResolution.x + uint(gridPos.z) * gridResolution.x * gridResolution.y;
+}
+
+
+void main()
+{   
+    uint idx = gl_GlobalInvocationID.x;
+
+    if (idx >= particleNum) return;
+
+    vec3 pos = positions[idx].xyz;
+
+    vec3 gridPos;
+
+    gridPos.x = int((pos.x - gridOrigin.x) / gridSpacing);
+    gridPos.y = int((pos.y - gridOrigin.y) / gridSpacing);
+    gridPos.z = int((pos.z - gridOrigin.z) / gridSpacing);
+
+    if (gridPos.x >= 0 && gridPos.x < gridResolution.x &&
+        gridPos.y >= 0 && gridPos.y < gridResolution.y &&
+        gridPos.z >= 0 && gridPos.z < gridResolution.z) {
+
+        uint binIndex = computeGridIndex(gridPos);
+        particleBinIndex[idx] = binIndex;
+
+        atomicAdd(bins[binIndex], 1);
+    }
+}

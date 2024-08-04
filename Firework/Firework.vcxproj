@@ -192,8 +192,10 @@
     <ClInclude Include="VertexCenteredVectorGrid3.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="buildNeighbourList.comp" />
+    <None Include="count.comp" />
     <None Include="gridUpdate.comp" />
+    <None Include="prefix.comp" />
+    <None Include="reorder.comp" />
     <None Include="shaders\floor.frag" />
     <None Include="shaders\floor.vert" />
     <None Include="shaders\particle.frag" />

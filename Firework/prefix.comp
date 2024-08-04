@@ -1,0 +1,52 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(binding = 9) buffer BinCountsSSBO {
+    uint binCounts[];
+};
+
+layout(binding = 11) buffer PrefixSumSSBO {
+    uint prefixSum[];
+};
+
+uniform uint numBins;
+
+// Compute Prefix Sum
+shared uint temp[256];
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+
+    // Load bin count into shared memory
+    if (idx < numBins) {
+        temp[gl_LocalInvocationID.x] = binCounts[idx];
+    } else {
+        temp[gl_LocalInvocationID.x] = 0;
+    }
+
+    // Synchronize to make sure all loads are done
+    memoryBarrierShared();
+    barrier();
+
+    // Perform parallel prefix sum (exclusive scan) on shared memory
+    for (uint offset = 1; offset < gl_WorkGroupSize.x; offset *= 2) {
+        uint value = 0;
+        if (gl_LocalInvocationID.x >= offset) {
+            value = temp[gl_LocalInvocationID.x - offset];
+        }
+        
+        memoryBarrierShared();
+        barrier();
+
+        temp[gl_LocalInvocationID.x] += value;
+
+        memoryBarrierShared();
+        barrier();
+    }
+
+    // Write results to the prefixSum buffer
+    if (idx < numBins) {
+        prefixSum[idx] = temp[gl_LocalInvocationID.x];
+    }
+}

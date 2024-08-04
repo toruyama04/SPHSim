@@ -170,7 +170,9 @@
     <None Include="shaders\particleKernel.comp" />
     <None Include="shaders\pressure.comp" />
     <None Include="gridUpdate.comp" />
-    <None Include="buildNeighbourList.comp" />
+    <None Include="count.comp" />
+    <None Include="prefix.comp" />
+    <None Include="reorder.comp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="smoke.png">

@@ -192,7 +192,7 @@ void Firework::initBuffers()
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, VectorData);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-    // neighbour 8, grid 9
+    // neighbour 8, grid 9, particleIndices 10
 
     // initialising indirect buffer
     /*glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndirectBuffer);
@@ -381,6 +381,7 @@ GLuint Firework::getAliveCount()
     GLuint* num = static_cast<GLuint*>(glMapBufferRange(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), GL_MAP_READ_BIT));
     GLuint count = num[0];
     glUnmapBuffer(GL_ATOMIC_COUNTER_BUFFER);
+    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
     return count;
 }
 

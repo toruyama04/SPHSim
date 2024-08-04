@@ -1,0 +1,34 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(binding = 10) buffer ParticleGridIndicesSSBO {
+    uint particleGridIndices[];
+};
+
+layout(binding = 12) buffer ReorderedIndicesSSBO {
+    uint reorderedIndices[];
+};
+
+layout(binding = 11) buffer PrefixSumSSBO {
+    uint prefixSum[];
+};
+
+layout(binding = 13) buffer TempBinOffsetsSSBO {
+    atomic_uint tempBinOffsets[];
+};
+
+uniform uint numParticles;
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= numParticles) return;
+
+    uint binIndex = particleGridIndices[idx];
+
+    uint insertIndex = atomicAdd(tempBinOffsets[binIndex], 1);
+
+    uint startIndex = prefixSum[binIndex];
+
+    reorderedIndices[startIndex + insertIndex] = idx;
+}
