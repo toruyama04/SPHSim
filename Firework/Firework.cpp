@@ -231,10 +231,11 @@ void Firework::render(const glm::mat4& view, const glm::mat4& projection)
 
 void Firework::beginAdvanceTimeStep(GLuint count)
 {
-    _neighbour_grids->build(count);
+    _neighbour_grids->build(count - 10);
     /*shaders["densityUpdate"]->use();
     shaders["densityUpdate"]->setFloat("smoothingKernel", this->_radius);
     shaders["densityUpdate"]->setFloat("mass", _mass);
+    shaders["densityUpdate"]->setUInt("particleNum", count);
     glDispatchCompute((count + 255) / 256, 1, 1);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
 }
@@ -384,7 +385,7 @@ void Firework::addParticleCube(const glm::vec3& origin, float spacing, int parti
 {
     GLuint aliveIndex = getAliveCount();
     int totalParticles = particlesPerSide * particlesPerSide * particlesPerSide;
-    // totalParticles += 10;
+    totalParticles += 10;
 
     if (aliveIndex + totalParticles < _max_particles)
     {

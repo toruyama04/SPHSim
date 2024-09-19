@@ -46,7 +46,7 @@ private:
 	float firework_lifetime;
 
 	// particleSystemData
-	float _radius = 1e-3;
+	float _radius = 1.0;
 	float _mass = 1e-3;
 	glm::vec3 _gravity = glm::vec3(0.0f, 2.0f, 0.0f);
 	float _targetDensity = 800.0;

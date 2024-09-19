@@ -17,8 +17,9 @@ private:
 	GLuint particleNumPerBinSSBO, binIndexForParticleSSBO;
 	GLuint prefixForBinReorderSSBO, particlesOrderedByBinSSBO;
 	GLuint flatNeighboursSSBO, neighbourListSSBO;
-	GLuint neighbourOffsetSSBO, indexInsertToBinSSBO;
+	GLuint neighbourOffsetSSBO, prefixIndexCounter;
 	GLuint groupSumSSBO, groupPrefixSumSSBO;
+	GLuint endIndexNeighbourSSBO;
 
 	std::unique_ptr<Shader> countShader;
 	std::unique_ptr<Shader> pass1, pass2, pass3;

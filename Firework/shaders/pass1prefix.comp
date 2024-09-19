@@ -3,20 +3,20 @@
 layout(local_size_x = 256) in;
 
 layout(std430, binding = 9) buffer particleNumPerBinSSBO {
-    uint binCounts[];  // Number of particles in each bin
+    uint binCounts[];
 };
 
 layout(std430, binding = 11) buffer prefixForBinReorderSSBO {
-    uint prefixSum[];  // Output: prefix sum result for each bin
+    uint prefixSum[];
 };
 
 layout(std430, binding = 13) buffer groupSumsSSBO {
-    uint groupSums[];  // Output: cumulative sum for each workgroup
+    uint groupSums[];
 };
 
-uniform uint numBins;  // Total number of bins
+uniform uint numBins;
 
-shared uint temp[256];  // Shared memory for intra-workgroup prefix sum
+shared uint temp[256];
 
 void main() {
     uint globalIdx = gl_GlobalInvocationID.x;
