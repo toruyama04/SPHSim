@@ -1,0 +1,24 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(std430, binding = 11) buffer prefixForBinReorderSSBO {
+    uint prefixSum[];  // Local prefix sum computed in pass 1
+};
+
+layout(std430, binding = 14) buffer groupPrefixSumsSSBO {
+    uint groupPrefixSums[];  // Global prefix sums from pass 2
+};
+
+uniform uint numBins;
+
+void main() {
+    uint globalIdx = gl_GlobalInvocationID.x;
+    uint groupId = gl_WorkGroupID.x;
+
+    // Only process valid indices
+    if (globalIdx < numBins) {
+        // Adjust the local prefix sum with the global prefix sum for this workgroup
+        prefixSum[globalIdx] += groupPrefixSums[groupId];
+    }
+}

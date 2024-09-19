@@ -81,14 +81,7 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
         std::exit(EXIT_FAILURE); // Exit if GLAD initialization fails
     }
 
-    const GLubyte* version = glGetString(GL_VERSION);
-    if (version != nullptr) {
-        std::cout << "OpenGL Version: " << version << std::endl;
-    }
-    else {
-        std::cerr << "Failed to retrieve OpenGL version\n";
-    }
-
+    // needed?
     int frame_width, frame_height;
     glfwGetFramebufferSize(window, &frame_width, &frame_height);
     if (frame_width == 0 || frame_height == 0) {
@@ -107,7 +100,7 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
     last_x = static_cast<double>(screen_width) / 2.0f;
     last_y = static_cast<double>(screen_height) / 2.0f;
 
-    camera = new Camera(glm::vec3(0.0f, 0.0f, 15.0f));
+    camera = new Camera(glm::vec3(5.0f, 7.0f, 25.0f));
     if (camera == nullptr) {
         std::cerr << "Failed to create camera\n";
         glfwDestroyWindow(window);
@@ -138,7 +131,7 @@ void Application::run()
         lastFrame = currentFrame;
 
         processInput();
-        //glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 
         firework->update(deltaTime);
 
@@ -146,9 +139,6 @@ void Application::run()
         glm::mat4 projection = glm::perspective(glm::radians(camera->Zoom), static_cast<float>(screen_width) / static_cast<float>(screen_height), 0.1f, 100.0f);
 
         firework->render(view, projection);
-
-        // add fireworks based on user input?
-        // add floor class or something like that
 
         displayFPS();
         glfwSwapBuffers(window);

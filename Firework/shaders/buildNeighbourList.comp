@@ -1,0 +1,86 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(std430, binding = 0) buffer positionsSSBO {
+    vec4 positions[];
+};
+
+layout(std430, binding = 12) buffer particlesOrderedByBinSSBO {
+    vec3 particlesOrderedByBin[];
+};
+
+layout(std430, binding = 11) buffer prefixForBinReorderSSBO {
+    uint prefixSum[];
+};
+
+layout(std430, binding = 15) buffer flatNeighborsSSBO {
+    uint flatNeighbors[];
+};
+
+layout(std430, binding = 17) buffer neighborListSSBO {
+    uint neighborList[];
+};
+
+layout(std430, binding = 18) buffer neighborOffsetSSBO {
+    uint neighborOffsets[];
+};
+
+layout(std430, binding = 10) buffer binIndexForParticleSSBO {
+    uint binIndexForParticle[];
+};
+
+uniform uint numParticles;
+uniform float searchRadius;
+uniform uint maxNeighborsPerParticle;
+uniform ivec3 gridSize;
+
+void findNeighborsForParticle(uint particleId) {
+    vec3 particlePos = positions[particleId].xyz;
+    uint binIndex = binIndexForParticle[particleId];  // The bin index for this particle
+
+    // Reserve space in the neighbor list for this particle
+    uint neighborListStart = neighborOffsets[particleId];
+    uint neighborCount = 0;
+
+    // Iterate over all 27 neighboring bins
+    for (uint i = 0; i < 27; ++i) {
+        uint neighborBinIndex = flatNeighbors[binIndex * 27 + i];
+
+        // If this is an invalid bin (-1), skip it
+        if (neighborBinIndex == uint(-1)) {
+            continue;
+        }
+
+        // Get the start and end indices for the particles in this neighboring bin
+        uint neighborBinStart = prefixSum[neighborBinIndex];  // Start index in particlesOrderedByBinSSBO
+        uint neighborBinEnd = prefixSum[neighborBinIndex + 1];  // End index in particlesOrderedByBinSSBO
+
+        // Iterate over all particles in the neighboring bin
+        for (uint j = neighborBinStart; j < neighborBinEnd; ++j) {
+            vec3 neighborPos = particlesOrderedByBin[j];
+            float dist = distance(particlePos, neighborPos);
+
+            // Check if this neighbor is within the search radius
+            if (dist < searchRadius) {
+                if (neighborCount < maxNeighborsPerParticle) {
+                    neighborList[neighborListStart + neighborCount] = j;  // Store neighbor's particle ID
+                    neighborCount++;
+                }
+            }
+        }
+    }
+
+    // If there are fewer than maxNeighborsPerParticle, pad with -1
+    for (uint k = neighborCount; k < maxNeighborsPerParticle; ++k) {
+        neighborList[neighborListStart + k] = uint(-1);  // -1 means no neighbor
+    }
+}
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= numParticles) return;  // Ensure we're within bounds
+
+    // Find neighbors for this particle
+    findNeighborsForParticle(idx);
+}

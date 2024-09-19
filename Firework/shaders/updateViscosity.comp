@@ -1,0 +1,60 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(std430, binding = 0) buffer Positions {
+    vec4 positions[];
+};
+
+layout(std430, binding = 1) buffer Velocities {
+    vec4 velocity[];
+};
+
+layout(std430, binding = 18) buffer DensitySSBO {
+    float densities[];
+};
+
+layout(std430, binding = 5) buffer ForcesSSBO {
+    vec4 forces[];
+};
+
+layout(std430, binding = 15) buffer NeighbourListSSBO {
+    vec3 neighbourList[];
+};
+
+layout(std430, binding = 17) buffer NeighbourListIndices {
+    uint prefixSum[];
+};
+
+uniform float massSquared;
+uniform float viscosityCoefficient;
+
+uniform float smoothingKernel;
+float sk5;
+float pi = 3.14159265358979323846264338327950288;
+
+
+float secondD(float dist)
+{
+    if (dist >= smoothingKernel) {
+        return 0.0;
+    } else {
+        float x = 1.0 - dist / smoothingKernel;
+        return 90.0 / (pi * sk5) * x;
+    }
+}
+
+
+void main()
+{
+    uint idx = gl_GlobalInvocationID.x;
+    sk5 = smoothingKernel * smoothingKernel * smoothingKernel * smoothingKernel * smoothingKernel;
+    uint startIdx = prefixSum[idx];
+    uint endIdx = (idx + 1 < prefixSum.length()) ? prefixSum[idx + 1] : neighbourList.length();
+    for (uint i = startIdx; i < endIdx; ++i)
+    {
+        vec3 neighbourPos = neighbourList[i];
+        float dist = length(positions[idx].xyz - neighbourPos);
+        forces[idx].xyz += viscosityCoefficient * massSquared * (velocity[i].xyz - velocity[idx].xyz) / densities[i] * secondD(dist);
+    }
+}

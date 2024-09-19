@@ -1,0 +1,65 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(std430, binding = 9) buffer particleNumPerBinSSBO {
+    uint binCounts[];  // Number of particles in each bin
+};
+
+layout(std430, binding = 11) buffer prefixForBinReorderSSBO {
+    uint prefixSum[];  // Output: prefix sum result for each bin
+};
+
+layout(std430, binding = 13) buffer groupSumsSSBO {
+    uint groupSums[];  // Output: cumulative sum for each workgroup
+};
+
+uniform uint numBins;  // Total number of bins
+
+shared uint temp[256];  // Shared memory for intra-workgroup prefix sum
+
+void main() {
+    uint globalIdx = gl_GlobalInvocationID.x;
+    uint localIdx = gl_LocalInvocationID.x;
+    uint groupId = gl_WorkGroupID.x;
+
+    // Initialize shared memory with binCounts values
+    if (globalIdx < numBins) {
+        temp[localIdx] = binCounts[globalIdx];
+    } else {
+        temp[localIdx] = 0;
+    }
+
+    // Synchronize before performing the prefix sum
+    memoryBarrierShared();
+    barrier();
+
+    // Perform parallel prefix sum (exclusive scan)
+    for (uint offset = 1; offset < gl_WorkGroupSize.x; offset *= 2) {
+        uint value = 0;
+        if (localIdx >= offset) {
+            value = temp[localIdx - offset];
+        }
+
+        // Synchronize before updating shared memory
+        memoryBarrierShared();
+        barrier();
+
+        // Update current thread's value with the value from the previous offset
+        temp[localIdx] += value;
+
+        // Synchronize after updating shared memory
+        memoryBarrierShared();
+        barrier();
+    }
+
+    // Write the local prefix sum to the output buffer
+    if (globalIdx < numBins) {
+        prefixSum[globalIdx] = temp[localIdx];
+    }
+
+    // The last thread of the workgroup writes the total sum to groupSums[]
+    if (localIdx == gl_WorkGroupSize.x - 1) {
+        groupSums[groupId] = temp[localIdx];
+    }
+}

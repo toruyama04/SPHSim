@@ -10,7 +10,7 @@ layout(std430, binding = 1) buffer Velocities {
     vec4 velocity[];
 };
 
-layout(std430, binding = 2) buffer Flags {
+layout(std430, binding = 4) buffer Flags {
     int flags[];
 };
 
@@ -20,126 +20,10 @@ uniform float deltaTime;
 uniform vec3 grav;
 
 
-/*
-must interpolate each particle to get a weighted average = mass * kernel function / neighbouring particles' density
-the kernel radius (smoothing length) and the mass of each particle is the same
-- mass / density means volume, meaning you put more weight to a value closer to origin 
-
-to get the density we just run the kernel function wit the distance as a parameter
-- the kernel function is the Muller one. Given a position, it spreads out any values stored in nearby particles
-    the function fades out to zero as the distance from the center reaches the kernel radius
-    *important to note, smaller kernel radius for higher resolution, more particles. bigger radius for less particles.
-*/
-
-// kernel function
-/* define kr, kr^2, kr^3
-*  double normalkernel(dist)
-     if distance * distance is >= kr^2 
-        return 0.0
-*    else double x = 1.0 - distance * distance / kr^2;
-        return 315.0 / (64.0 * kPid <- (pi) * kr^3) * x * x * x;
-*/
-
-// spiky kernel (issues when computing pressure with normal kernel)
-/* define kr, kr^2, kr^3, kr^4, kr^5
-   double spikykernel(dist)
-     if dist >= kr;
-        return 0.0;
-     else
-        double x = 1.0 - dist / kr;
-        return 15.0 / (pi * kr^3) * x * x * x;
-    
-   vec3 spikyGradient(dist, dir)
-      return -firstDerivativeSpiky(dist) * dir;
-
-   double firstDerivativeSpiky(dist)
-      if (dist >= kr)
-         return 0.0;
-      else
-         double x = 1.0 - dist / kr;
-         return -45.0 / (pi * kr^4) * x * x;
-
-   double secondDeriviateSpiky(dist)
-      if (dist >= kr)
-         return 0.0;
-      else
-         double x = 1.0 - dist / kr;
-         return -45.0 / (pi * kr^4) * x * x;
-    
-
-*/
-
 void main() {
     uint id = gl_GlobalInvocationID.x;
 
-    // lets update densities
     /*
-    for each particle:
-        double sum = sumOfKernelNearby(positions[i]);
-        forces[i].x (density) = forces[i].w (mass) * sum;
-
-    sumOfNearby(vec3 origin)
-        double sum = 0.0;
-        for each nearby particle:
-            double dist = distance from origin to neighbour positions;
-            sum += kernel(dist);
-        return sum;
-    */
-    
-    // calculating the kernel interpolation
-    /* 
-    vec3 pos = positions[id].xyz;
-    get nearby particles using neighbour list
-    for each nearby particle within kernel radius:
-        double dist = distance from pos to nearby particle;
-        double weight = forces[i].w (mass) / forces[i].x (density) * kernel(dist);
-        sum += weight * values[i] (not sure what values is referring to)
-    */
-
-    // calculating gradient
-    /*
-    vec3 sum;
-    for each nearby particle:
-        double dist = distance;
-        if (dist > 0.0)
-            vec3 dir = (neighbourPos - origin) / dist;
-            sum += forces[id].x (density) * forces[id].w (mass) * (values[i] / square(forces[id].x)) + values[j] / square(forces[j].x)) * gradient(dist, dir);
-    gradient = sum;
-
-    vec3 gradient(double dist, vec3 dir)
-        return -firstDerivative(dist) * dir;
-
-    double firstDerivative(double dist)
-        if (distance >= kr)
-            return 0.0;
-        else 
-            double x = 1.0 - distance * distance / kr^2;
-            return -945.0 / (32.0 * pi * kr^5 (kr^2 * kr^3)) * dist * x * x;
-    */
-
-    // calculating laplacian
-    /*
-    double sum = 0.0;
-    for each nearby particle:
-        double dist = origin to neighbourPos;
-        sum += forces[i].w (mass) * (values[j] - values[i]) / forces[j].x * secondDerivative(dist);
-
-    double secondDerivative(double dist)
-        if (dist * dist >= kr^2)
-            return 0.0;
-        else
-            double x = dist * dist / kr^2;
-            return 945.0 / (32.0 * pi * kr^5) * (1 - x) * (3 * x - 1);
-    */
-
-
-
-    /*
-    velocity[id].xyz += grav * deltaTime
-
-    velocity[id].xyz *= dampingFactor;
-
-    positions[id].xyz += velocity[id].xyz * deltaTime;
 
     positions[id].w -= deltaTime;
     if (positions[id].w < 0.0) {

@@ -7,7 +7,8 @@
 
 
 glm::vec3 fireworkPos[2] = {
-    glm::vec3(0.5f, 1.0f, 0.5f),
+    // check grid sizes for neighbour search
+    glm::vec3(5.0f, 8.0f, 5.0f),
     glm::vec3(5.0f, 8.0f, -5.0f)
 };
 
@@ -16,7 +17,8 @@ int main() {
     Application* myApp = new Application(1920, 1080, "Firework");
     Firework* myFirework = new Firework;
 
-    myFirework->addFirework(fireworkPos[0]);
+    // myFirework->addFirework(fireworkPos[0]);
+    myFirework->addParticleCube(glm::vec3(5.0, 5.0, 5.5), 0.4, 10);
     myApp->addFirework(myFirework);
     myApp->run();
 

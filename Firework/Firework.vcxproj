@@ -143,74 +143,44 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
-    <ClCompile Include="Array3.cpp" />
-    <ClCompile Include="BoundingBox.cpp" />
-    <ClCompile Include="CellCenteredScalarGrid3.cpp" />
-    <ClCompile Include="CellCenteredVectorGrid3.cpp" />
-    <ClCompile Include="CollocatedVectorGrid3.cpp" />
-    <ClCompile Include="FaceCenteredGrid3.cpp" />
     <ClCompile Include="glad.c" />
-    <ClCompile Include="GridBackwardEulerDiffusionSolver3.cpp" />
-    <ClCompile Include="GridPressureSolver3.cpp" />
-    <ClCompile Include="GridSystemData3.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Firework.cpp" />
     <ClCompile Include="PointHashGridSearcher3.cpp" />
-    <ClCompile Include="PointNeighbourSearcher3.cpp" />
-    <ClCompile Include="ScalarGrid3.cpp" />
-    <ClCompile Include="SemiLagrangian3.cpp" />
     <ClCompile Include="Shader.cpp" />
-    <ClCompile Include="Size3.cpp" />
     <ClCompile Include="stb_image.cpp" />
-    <ClCompile Include="VertexCenteredScalarGrid3.cpp" />
-    <ClCompile Include="VertexCenteredVectorGrid3.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
-    <ClInclude Include="Array3.h" />
-    <ClInclude Include="BoundingBox.h" />
     <ClInclude Include="camera.h" />
-    <ClInclude Include="CellCenteredScalarGrid3.h" />
-    <ClInclude Include="CellCenteredVectorGrid3.h" />
-    <ClInclude Include="CollocatedVectorGrid3.h" />
-    <ClInclude Include="FaceCenteredGrid3.h" />
-    <ClInclude Include="Field.h" />
     <ClInclude Include="Firework.h" />
-    <ClInclude Include="Grid.h" />
-    <ClInclude Include="GridBackwardEulerDiffusionSolver3.h" />
-    <ClInclude Include="GridPressureSolver3.h" />
-    <ClInclude Include="GridSystemData3.h" />
     <ClInclude Include="PointHashGridSearcher3.h" />
-    <ClInclude Include="PointNeighbourSearcher3.h" />
-    <ClInclude Include="ScalarGrid3.h" />
-    <ClInclude Include="SemiLagrangian3.h" />
     <ClInclude Include="Shader.h" />
-    <ClInclude Include="Size3.h" />
     <ClInclude Include="stb_image.h" />
-    <ClInclude Include="VectorGrid3.h" />
-    <ClInclude Include="VertexCenteredScalarGrid3.h" />
-    <ClInclude Include="VertexCenteredVectorGrid3.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="count.comp" />
-    <None Include="buildNeighbourList.comp" />
-    <None Include="gridUpdate.comp" />
-    <None Include="neighbourIndices.comp" />
-    <None Include="prefix.comp" />
-    <None Include="reorder.comp" />
-    <None Include="reset.comp" />
+    <None Include="shaders\count.comp" />
+    <None Include="shaders\buildNeighbourList.comp" />
+    <None Include="shaders\pass1prefix.comp" />
+    <None Include="shaders\pass2prefix.comp" />
+    <None Include="shaders\pass3prefix.comp" />
+    <None Include="shaders\reorder.comp" />
+    <None Include="shaders\reset.comp" />
     <None Include="shaders\floor.frag" />
     <None Include="shaders\floor.vert" />
     <None Include="shaders\particle.frag" />
     <None Include="shaders\particle.vert" />
     <None Include="shaders\particleDenPre.comp" />
-    <None Include="shaders\particleInsertionToGrid.comp" />
-    <None Include="shaders\particleKernel.comp" />
     <None Include="shaders\particleReorder.comp" />
     <None Include="shaders\particlePrefix.comp" />
     <None Include="shaders\particleTrail.comp" />
     <None Include="shaders\particleUpdate.comp" />
     <None Include="shaders\pressure.comp" />
+    <None Include="shaders\timeIntegration.comp" />
+    <None Include="shaders\updateDensity.comp" />
+    <None Include="shaders\computePressure.comp" />
+    <None Include="shaders\updatePressure.comp" />
+    <None Include="shaders\updateViscosity.comp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="smoke.png" />

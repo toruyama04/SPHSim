@@ -1,0 +1,56 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(std430, binding = 2) buffer newVelocities {
+    vec4 new_velocities[];
+};
+
+layout(std430, binding = 3) buffer newPositions {
+    vec4 new_positions[];
+};
+
+layout(std430, binding = 0) buffer oldPositions {
+    vec4 positions[];
+};
+
+layout(std430, binding = 1) buffer oldVelocities {
+    vec4 velocities[];
+};
+
+layout(std430, binding = 5) buffer ForcesSSBO {
+    vec4 forces[];
+};
+
+layout(std430, binding = 4) buffer Flags {
+    int flags[];
+};
+
+layout(binding = 0, offset = 0) uniform atomic_uint aliveCount;
+
+uniform float mass;
+uniform float timeStep;
+uniform float dampingFactor;
+uniform uint count;
+
+
+void main()
+{
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= count) return;
+    // velocities[idx].xyz *= dampingFactor;
+    // new_velocities[idx].xyz = velocities[idx].xyz + timeStep * forces[idx].xyz / mass;
+    // new_positions[idx].xyz = positions[idx].xyz + timeStep * new_velocities[idx].xyz;
+    // positions[idx].xyz = new_positions[idx].xyz;
+    // velocities[idx].xyz = new_velocities[idx].xyz;
+    // positions[idx].w -= timeStep;
+    positions[idx].xyz += velocities[idx].xyz;
+
+    if (positions[idx].w < 0.0) {
+        positions[idx].w = -1.0;
+        flags[idx] = 0;
+        return;
+    }
+    flags[idx] = 1;
+    atomicCounterIncrement(aliveCount);
+}

@@ -1,0 +1,63 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(std430, binding = 0) buffer Positions {
+    vec4 positions[];
+};
+
+layout(std430, binding = 15) buffer NeighbourListSSBO {
+    vec3 neighbourList[];
+};
+
+layout(std430, binding = 17) buffer NeighbourListIndices {
+    uint prefixSum[];
+};
+
+layout(std430, binding = 18) buffer DensitySSBO {
+    float densities[];
+};
+
+uniform float smoothingKernel;
+uniform float mass;
+float sk2;
+float sk3;
+float pi = 3.14159265358979323846264338327950288;
+
+
+float kernel(float distance)
+{
+    if (distance*distance >= sk2)
+    {
+        return 0.0;
+    }
+    else
+    {
+        float x = 1.0 - distance * distance / sk2;
+        return 315.0 / (64.0 * pi * sk3) * x * x * x;
+    }
+}
+
+// prefix: for each particle, the start index for their neighbours. 
+
+void main()
+{
+    uint idx = gl_GlobalInvocationID.x;
+
+    // go through each neighbour
+    sk2 = smoothingKernel * smoothingKernel;
+    sk3 = sk2 * smoothingKernel;
+
+    uint startIdx = prefixSum[idx];
+    uint endIdx = (idx + 1 < prefixSum.length()) ? prefixSum[idx + 1] : neighbourList.length();
+
+    float densitySum = 0.0;
+
+    for (uint i = startIdx; i < endIdx; ++i)
+    {
+        vec3 neighbourPos = neighbourList[i];
+        float dist = length(positions[idx].xyz - neighbourPos);
+        densitySum += kernel(dist);
+    }
+    densities[idx] = mass * densitySum;
+}

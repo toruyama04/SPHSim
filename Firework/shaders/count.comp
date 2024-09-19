@@ -33,17 +33,15 @@ void main()
 
     vec3 pos = positions[idx].xyz;
 
-    vec3 gridPos;
+    uint gridPosx = uint(floor(pos.x - gridOrigin.x));
+    uint gridPosy = uint(floor(pos.y - gridOrigin.y));
+    uint gridPosz = uint(floor(pos.z - gridOrigin.z));
 
-    gridPos.x = int((pos.x - gridOrigin.x) / gridSpacing);
-    gridPos.y = int((pos.y - gridOrigin.y) / gridSpacing);
-    gridPos.z = int((pos.z - gridOrigin.z) / gridSpacing);
+    if (gridPosx >= 0 && gridPosx < gridResolution.x &&
+        gridPosy >= 0 && gridPosy < gridResolution.y &&
+        gridPosz >= 0 && gridPosz < gridResolution.z) {
 
-    if (gridPos.x >= 0 && gridPos.x < gridResolution.x &&
-        gridPos.y >= 0 && gridPos.y < gridResolution.y &&
-        gridPos.z >= 0 && gridPos.z < gridResolution.z) {
-
-        uint binIndex = computeGridIndex(gridPos);
+        uint binIndex = gridPosx + (gridPosy * 10) + (gridPosz * 10 * 10);
         particleBinIndex[idx] = binIndex;
 
         atomicAdd(bins[binIndex], 1);

@@ -1,0 +1,63 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(std430, binding = 15) buffer NeighbourListSSBO {
+    vec3 neighbourList[];
+};
+
+layout(std430, binding = 17) buffer NeighbourListIndices {
+    uint prefixSum[];
+};
+
+layout(std430, binding = 0) buffer Positions {
+    vec4 positions[];
+};
+
+layout(std430, binding = 19) buffer PressureSSBO {
+    float pressures[]; 
+};
+
+layout(std430, binding = 5) buffer ForcesSSBO {
+    vec4 forces[];
+};
+
+layout(std430, binding = 18) buffer DensitySSBO {
+    float densities[];
+};
+
+uniform float massSquared;
+uniform float smoothingKernel;
+float sk4;
+float pi = 3.14159265358979323846264338327950288;
+
+float firstD(float dist) {
+    if (dist >= smoothingKernel) {
+        return 0.0;
+    } else {
+        float x = 1.0 - dist / smoothingKernel;
+        return -45.0 / (pi * sk4) * x * x;
+    }
+}
+
+vec3 gradient(float dist, vec3 dir)
+{
+    return (firstD(dist) * -1) * dir;
+}
+
+
+void main()
+{
+    uint idx = gl_GlobalInvocationID.x;
+    uint startIdx = prefixSum[idx];
+    uint endIdx = (idx + 1 < prefixSum.length()) ? prefixSum[idx + 1] : neighbourList.length();
+    for (uint i = startIdx; i < endIdx; ++i)
+    {
+        vec3 neighbourPos = neighbourList[i];
+        float dist = length(positions[idx].xyz - neighbourPos);
+        if (dist > 0.0) {
+            vec3 dir = (positions[i].xyz - positions[idx].xyz) / dist;
+            forces[idx].xyz -= massSquared * (pressures[idx] / (densities[idx] * densities[idx]) + pressures[i] / (densities[i] * densities[i])) * gradient(dist, dir);
+        }
+    }
+}

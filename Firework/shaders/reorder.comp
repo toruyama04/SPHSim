@@ -1,0 +1,36 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(std430, binding = 0) buffer particlePositionsSSBO {
+    vec4 particlePositions[];  // Original particle positions
+};
+
+layout(std430, binding = 10) buffer binIndexForParticleSSBO {
+    uint binIndexForParticle[];  // The bin index of each particle
+};
+
+layout(std430, binding = 11) buffer prefixForBinReorderSSBO {
+    uint prefixSum[];
+};
+
+layout(std430, binding = 12) buffer particlesOrderedByBinSSBO {
+    vec3 particlesOrderedByBin[];  // Output: particles ordered by bin
+};
+
+uniform uint numParticles;
+
+void main() {
+    uint id = gl_GlobalInvocationID.x;
+
+    if (id > numParticles) return;
+
+    // Read the bin index for this particle
+    uint binIndex = binIndexForParticle[id];
+
+    // Use atomic add to get a unique position within the reordered buffer for this bin
+    uint posInOrderedArray = atomicAdd(prefixSum[binIndex], 1);
+
+    // Reorder particle into the correct position
+    particlesOrderedByBin[posInOrderedArray] = particlePositions[id].xyz;
+}

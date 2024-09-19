@@ -1,0 +1,26 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(std430, binding = 18) buffer DensitySSBO {
+    float densities[];
+};
+
+layout(std430, binding = 19) buffer PressureSSBO {
+    float pressures[]; 
+};
+
+uniform float targetDensity;
+uniform float eosScale;
+uniform float eosExponent;
+uniform float negativePressureScale;
+
+void main()
+{
+    uint idx = gl_GlobalInvocationID.x;
+    float p = eosScale / eosExponent * (pow(densities[idx] / targetDensity), eosExponent) - 1.0);
+    if (p < 0) {
+        p *= negativePressureScale;
+    }
+    pressures[idx] = p;
+}

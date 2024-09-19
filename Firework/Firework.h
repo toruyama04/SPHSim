@@ -3,12 +3,8 @@
 #include <glm/vec4.hpp>
 
 #include "Shader.h"
-#include "Field.h"
 
 #include <unordered_map>
-#include "FaceCenteredGrid3.h"
-#include "ScalarGrid3.h"
-#include "SemiLagrangian3.h"
 #include "PointHashGridSearcher3.h"
 
 class Firework
@@ -31,63 +27,43 @@ public:
 
 	void update(float delta_time);
 
-	// grid stuff
-	/*const FaceCenteredGrid3Ptr& velocity() const;
-	glm::vec3<double> gridOrigin() const;
-	glm::vec3<double> gridSpacing() const;
-	Size3 resolution() const;
-	// resizeGrid(const Size3& newSize, const glm:vec3<double>& newGridSpacing, const glm::vec3<double>& newGridOrigin);*/
-
+	void beginAdvanceTimeStep(GLuint count);
+	void accumulateNonPressureForce(GLuint count);
+	void accumulatePressureForce(GLuint count);
+	void timeIntegration(GLuint count, float delta_time);
 
 	void addFirework(const glm::vec3& origin);
+	void addParticleCube(const glm::vec3& origin, float spacing, int particlesPerSide);
 
 	GLuint getAliveCount();
-	void resetAliveCount();
+	void resetAliveCount(GLuint amount);
 
 private:
 	void initBuffers();
 	void initShaders();
-	void initSolvers();
 
 	unsigned int _particle_num, _max_particles, _firework_num;
 	float firework_lifetime;
 
-	// grid(Smoke/Fluid)Solver3 constants
-	/*double viscosity_coefficient = 0.0;
-	glm::vec3<double> gravity = glm::vec3<double>(0.0, -9.8, 0.0);
-	size_t _smokeDensityDataId;
-	double _smokeDiffusionCoefficient = 0.0;
-	double _buoyancySmokeDensityFactor = -0.0000625;
-	double _smokeDecayFactor = 0.001;*/
-	// gridSystemData3 constants
-	/*const Size3 _resolution = Size3(50, 100, 50);
-	const glm::vec3<double> _gridSpacing;
-	const glm::vec3<double> _gridOrigin;
-	FaceCenteredGrid3Ptr _velocity;
-	size_t _velocityIdx; // ??
-	std::vector<ScalarGrid3Ptr> _scalarDataList;
-	std::vector<VectorGrid3Ptr> _vectorDataList;
-	std::vector<ScalarGrid3Ptr> _advectableScalarDataList;
-	std::vector<VectorGrid3Ptr> _advectableVectorDataList;*/
-
 	// particleSystemData
-	double _radius = 1e-3;
-	double _drag_coefficient;
-	// double _restitution_coefficient = 0.0;
-	glm::vec3 _gravity = glm::vec3<double>(0.0, 2.0, 0.0);
-	double _targetDensity = 800.0;
-	double _targetSpacing = 0.1;
-	double _kernelRadiusOverTargetSpacing = 1.8;
-	double _kernelRadius;
+	float _radius = 1e-3;
+	float _mass = 1e-3;
+	glm::vec3 _gravity = glm::vec3(0.0f, 2.0f, 0.0f);
+	float _targetDensity = 800.0;
+	// double _targetSpacing = 0.1;
+	// double pseudoViscosityCoefficient = 10.0;
+	// double _kernelRadiusOverTargetSpacing = 1.8;
+	float _eosExponent = 7.0;
+	float _negativePressureScale = 0.0;
 
 	std::unordered_map<std::string, std::unique_ptr<Shader>> shaders;
-	std::vector<std::unique_ptr<PointHashGridSearcher3>> _neighbour_grids;
+	std::unique_ptr<PointHashGridSearcher3> _neighbour_grids;
 
 	GLuint VBO, VAO, EBO;
-	GLuint positionsSSBO, velocitiesSSBO, aliveFlagSSBO, forcesSSBO, ScalarData, VectorData;
+	GLuint positionsSSBO, velocitiesSSBO, aliveFlagSSBO, forcesSSBO, densitiesSSBO, pressureSSBO;
 	GLuint newPositionSSBO, newVelocitySSBO;
 	GLuint atomicCounterBuffer;
 	GLuint drawIndirectBuffer;
-	GLuint particleTexture;
+	// GLuint particleTexture;
 	DrawElementsIndirectCommand cmd;
 };
