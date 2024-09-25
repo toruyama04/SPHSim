@@ -14,36 +14,37 @@ layout(std430, binding = 10) buffer binIndexForParticleSSBO {
     uint particleBinIndex[];
 };
 
-uniform uvec3 gridResolution;
+uniform vec3 gridResolution;
 uniform vec3 gridOrigin;
 uniform float gridSpacing;
 uniform uint particleNum;
-
-uint computeGridIndex(vec3 gridPos)
-{
-    return uint(gridPos.x) + uint(gridPos.y) * gridResolution.x + uint(gridPos.z) * gridResolution.x * gridResolution.y;
-}
 
 
 void main()
 {   
     uint idx = gl_GlobalInvocationID.x;
-
     if (idx >= particleNum) return;
 
     vec3 pos = positions[idx].xyz;
 
-    uint gridPosx = uint(floor(pos.x - gridOrigin.x));
-    uint gridPosy = uint(floor(pos.y - gridOrigin.y));
-    uint gridPosz = uint(floor(pos.z - gridOrigin.z));
+    float gridPosx = floor(pos.x);
+    float gridPosy = floor(pos.y);
+    float gridPosz = floor(pos.z);
 
-    if (gridPosx >= 0 && gridPosx < gridResolution.x &&
-        gridPosy >= 0 && gridPosy < gridResolution.y &&
-        gridPosz >= 0 && gridPosz < gridResolution.z) {
+    // Ensure the particle is within the grid bounds
+    if (gridPosx < gridResolution.x &&
+        gridPosy < gridResolution.y &&
+        gridPosz < gridResolution.z) {
 
-        uint binIndex = gridPosx + (gridPosy * 10) + (gridPosz * 10 * 10);
+        // Compute the 1D bin index from 3D grid coordinates
+        uint binIndex = uint(gridPosx + (gridPosy * gridResolution.x) + (gridPosz * gridResolution.x * gridResolution.y));
+
+        // Assign the bin index to the particle
         particleBinIndex[idx] = binIndex;
 
+        // Atomically increment the bin count
         atomicAdd(bins[binIndex], 1);
+    } else {
+        positions[idx].w = -1.0;
     }
 }

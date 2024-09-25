@@ -2,19 +2,11 @@
 
 layout(local_size_x = 256) in;
 
-layout(std430, binding = 2) buffer newVelocities {
-    vec4 new_velocities[];
-};
-
-layout(std430, binding = 3) buffer newPositions {
-    vec4 new_positions[];
-};
-
-layout(std430, binding = 0) buffer oldPositions {
+layout(std430, binding = 0) buffer Positions {
     vec4 positions[];
 };
 
-layout(std430, binding = 1) buffer oldVelocities {
+layout(std430, binding = 1) buffer Velocities {
     vec4 velocities[];
 };
 
@@ -22,35 +14,42 @@ layout(std430, binding = 5) buffer ForcesSSBO {
     vec4 forces[];
 };
 
-layout(std430, binding = 4) buffer Flags {
-    int flags[];
+layout(std430, binding = 15) buffer prefixIndex {
+    uint indexCount[];
 };
 
-layout(binding = 0, offset = 0) uniform atomic_uint aliveCount;
+layout(std430, binding = 14) buffer neighborListSSBO {
+    uint neighborList[];
+};
+
 
 uniform float mass;
 uniform float timeStep;
-uniform float dampingFactor;
-uniform uint count;
-
+uniform uint particleNum;
+uniform uint maxNeighbourNum;
 
 void main()
 {
     uint idx = gl_GlobalInvocationID.x;
-    if (idx >= count) return;
-    // velocities[idx].xyz *= dampingFactor;
-    // new_velocities[idx].xyz = velocities[idx].xyz + timeStep * forces[idx].xyz / mass;
-    // new_positions[idx].xyz = positions[idx].xyz + timeStep * new_velocities[idx].xyz;
-    // positions[idx].xyz = new_positions[idx].xyz;
-    // velocities[idx].xyz = new_velocities[idx].xyz;
-    // positions[idx].w -= timeStep;
-    positions[idx].xyz += velocities[idx].xyz;
+    if (idx >= particleNum) return;
 
-    if (positions[idx].w < 0.0) {
-        positions[idx].w = -1.0;
-        flags[idx] = 0;
-        return;
+    vec3 pos = positions[idx].xyz;
+    vec3 vel = velocities[idx].xyz;
+    vec3 force = forces[idx].xyz;
+    
+    vel += (force / mass) * timeStep;
+    //vel *= 0.99;
+    pos += vel * timeStep;
+
+    //velocities[idx].xyz = vel;
+    //positions[idx].xyz = pos;
+
+
+    forces[idx] = vec4(0.0, 0.0, 0.0, 0.0);
+    indexCount[idx] = 0;
+    uint index = idx * maxNeighbourNum;
+    for (uint i = index; i < index + maxNeighbourNum; ++i)
+    {
+        neighborList[i] = 0;
     }
-    flags[idx] = 1;
-    atomicCounterIncrement(aliveCount);
 }

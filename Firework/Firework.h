@@ -4,7 +4,6 @@
 
 #include "Shader.h"
 
-#include <unordered_map>
 #include "PointHashGridSearcher3.h"
 
 class Firework
@@ -27,7 +26,7 @@ public:
 
 	void update(float delta_time);
 
-	void beginAdvanceTimeStep(GLuint count);
+	void beginAdvanceTimeStep(GLuint count, float delta_time);
 	void accumulateNonPressureForce(GLuint count);
 	void accumulatePressureForce(GLuint count);
 	void timeIntegration(GLuint count, float delta_time);
@@ -46,22 +45,26 @@ private:
 	float firework_lifetime;
 
 	// particleSystemData
-	float _radius = 1.0;
-	float _mass = 1e-3;
+	float _radius = 1.0f;
+	float _mass = 0.5f;
+	GLuint maxNeighbourNum = 60;
 	glm::vec3 _gravity = glm::vec3(0.0f, 2.0f, 0.0f);
-	float _targetDensity = 800.0;
-	// double _targetSpacing = 0.1;
-	// double pseudoViscosityCoefficient = 10.0;
-	// double _kernelRadiusOverTargetSpacing = 1.8;
+	float _targetDensity = 8.0f;
 	float _eosExponent = 7.0;
 	float _negativePressureScale = 0.0;
 
-	std::unordered_map<std::string, std::unique_ptr<Shader>> shaders;
+	std::unique_ptr<Shader> particleShader;
+	std::unique_ptr<Shader> densityUpdate;
+	std::unique_ptr<Shader> viscosityUpdate;
+	std::unique_ptr<Shader> pressureCompute;
+	std::unique_ptr<Shader> pressureUpdate;
+	std::unique_ptr<Shader> timeIntegrations;
+	std::unique_ptr<Shader> resetShader;
+
 	std::unique_ptr<PointHashGridSearcher3> _neighbour_grids;
 
 	GLuint VBO, VAO, EBO;
 	GLuint positionsSSBO, velocitiesSSBO, aliveFlagSSBO, forcesSSBO, densitiesSSBO, pressureSSBO;
-	GLuint newPositionSSBO, newVelocitySSBO;
 	GLuint atomicCounterBuffer;
 	GLuint drawIndirectBuffer;
 	// GLuint particleTexture;

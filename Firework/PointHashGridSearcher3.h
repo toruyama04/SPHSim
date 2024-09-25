@@ -7,18 +7,19 @@
 class PointHashGridSearcher3
 {
 public:
-	PointHashGridSearcher3(GLuint resolutionX, GLuint resolutionY, GLuint resolutionZ, double gridSpacing,
-		unsigned int particleNum);
+	PointHashGridSearcher3(GLuint resolutionX, GLuint resolutionY, GLuint resolutionZ, unsigned int particleNum, GLuint maxNeighbourNum);
 
-	void build(GLuint particleNum);
+	void build(GLuint particleNum, float searchRadius);
 
 private:
 
-	GLuint particleNumPerBinSSBO, binIndexForParticleSSBO;
-	GLuint prefixForBinReorderSSBO, particlesOrderedByBinSSBO;
-	GLuint flatNeighboursSSBO, neighbourListSSBO;
-	GLuint neighbourOffsetSSBO, prefixIndexCounter;
-	GLuint groupSumSSBO, groupPrefixSumSSBO;
+	GLuint particleNumPerBinSSBO;
+	GLuint binIndexForParticleSSBO;
+	GLuint prefixForBinReorderSSBO;
+	GLuint particlesOrderedByBinSSBO;
+	GLuint flatNeighboursSSBO;
+	GLuint neighbourListSSBO;
+	GLuint prefixIndexCounter;
 	GLuint endIndexNeighbourSSBO;
 
 	std::unique_ptr<Shader> countShader;
@@ -26,6 +27,7 @@ private:
 	std::unique_ptr<Shader> reorderShader;
 	std::unique_ptr<Shader> generateNeighbourListShader;
 
-	glm::uvec3 _resolution;
-	GLuint resolution;
+	glm::vec3 resolutionVec;
+	GLuint binCount;
+	GLuint maxneighbourNum;
 };

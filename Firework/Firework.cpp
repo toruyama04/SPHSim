@@ -1,4 +1,6 @@
 ﻿#include "Firework.h"
+
+#include <random>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -33,7 +35,7 @@ Firework::Firework()
 	initBuffers();
 	initShaders();
 
-    _neighbour_grids = std::make_unique<PointHashGridSearcher3>(10, 10, 10, 1.0, 1000);
+    _neighbour_grids = std::make_unique<PointHashGridSearcher3>(10, 10, 10, 1000, maxNeighbourNum);
 }
 
 Firework::~Firework()
@@ -49,13 +51,13 @@ Firework::~Firework()
 
 void Firework::initShaders()
 {
-    shaders["particleShader"] = std::make_unique<Shader>("shaders/particle.vert", "shaders/particle.frag");
-    // shaders["computeShaderUpdate"] = std::make_unique<Shader>("shaders/particleUpdate.comp");
-    // shaders["densityUpdate"] = std::make_unique<Shader>("shaders/updateDensity.comp");
-    // shaders["viscosityUpdate"] = std::make_unique<Shader>("shaders/updateViscosity.comp");
-    // shaders["pressureCompute"] = std::make_unique<Shader>("shaders/computePressure.comp");
-    // shaders["pressureUpdate"] = std::make_unique<Shader>("shaders/updatePressure.comp");
-    shaders["timeIntegration"] = std::make_unique<Shader>("shaders/timeIntegration.comp");
+    particleShader = std::make_unique<Shader>("shaders/particle.vert", "shaders/particle.frag");
+    densityUpdate = std::make_unique<Shader>("shaders/updateDensity.comp");
+    viscosityUpdate = std::make_unique<Shader>("shaders/updateViscosity.comp");
+    pressureCompute = std::make_unique<Shader>("shaders/computePressure.comp");
+    pressureUpdate = std::make_unique<Shader>("shaders/updatePressure.comp");
+    timeIntegrations = std::make_unique<Shader>("shaders/timeIntegration.comp");
+    resetShader = std::make_unique<Shader>("shaders/resetShader.comp");
     // shaders["computeShaderPrefix"] = std::make_unique<Shader>("shaders/particlePrefix.comp");
     // shaders["computeShaderTrail"] = std::make_unique<Shader>("shaders/particleTrail.comp");
     // shaders["computeShaderReorder"] = std::make_unique<Shader>("shaders/particleReorder.comp");
@@ -70,8 +72,6 @@ void Firework::initBuffers()
     glGenBuffers(1, &EBO);
     glGenBuffers(1, &positionsSSBO);
     glGenBuffers(1, &velocitiesSSBO);
-    glGenBuffers(1, &newPositionSSBO);
-    glGenBuffers(1, &newVelocitySSBO);
     glGenBuffers(1, &aliveFlagSSBO);
     glGenBuffers(1, &forcesSSBO);
     glGenBuffers(1, &densitiesSSBO);
@@ -110,7 +110,7 @@ void Firework::initBuffers()
 
     glBindVertexArray(0);
 
-    // initialising alive count to 0 for atomic counter buffer
+    // aliveCount
 	// 0
     glGenBuffers(1, &atomicCounterBuffer);
     glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
@@ -134,16 +134,6 @@ void Firework::initBuffers()
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * _max_particles, default_velocity.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, velocitiesSSBO);
 
-    // 2
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, newPositionSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * _max_particles, default_values.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, newPositionSSBO);
-
-    // 3
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, newVelocitySSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * _max_particles, default_velocity.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, newVelocitySSBO);
-
     // initialising alive flag SSBO with default values
     // 4
     std::vector<int> flag_default(_max_particles, 0);
@@ -157,13 +147,14 @@ void Firework::initBuffers()
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, forcesSSBO);
 
     // 6
+    std::vector<float> defaultFloat(_max_particles, 0.0f);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, densitiesSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * _max_particles, default_velocity.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * _max_particles, defaultFloat.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, densitiesSSBO);
 
     // 7
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, pressureSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * _max_particles, default_velocity.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * _max_particles, defaultFloat.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, pressureSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
@@ -189,114 +180,69 @@ void Firework::initBuffers()
     }*/
 }
 
-void Firework::render(const glm::mat4& view, const glm::mat4& projection)
+void Firework::beginAdvanceTimeStep(GLuint count, float delta_time)
 {
-    GLuint count = getAliveCount();
-    count += 10;
-    cmd = { 6, count, 0, 0, 0 };
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndirectBuffer);
-    glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, sizeof(cmd), &cmd);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+    _neighbour_grids->build(count, this->_radius);
 
-    shaders["particleShader"]->use();
-	glm::mat4 model = glm::mat4(1.0f);
-    shaders["particleShader"]->setMat4("model", model);
-    shaders["particleShader"]->setMat4("view", view);
-    shaders["particleShader"]->setMat4("projection", projection);
-
-    if (count > 0)
-    {
-		glBindVertexArray(VAO);
-		glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr);
-        glMemoryBarrier(GL_ALL_BARRIER_BITS);
-    }
-	glBindVertexArray(0);
-
-    /*
-     * to render 3D fluids, the surface was extracted by taking the iso-surface from the SPH density field.
-     * If fluid density is p, p/2 is taken for the isoSurface.
-     * then converted to a triangle mesh using marching cubes algorithm
-     * rendered using a path-tracing renderer
-     */
-
-
-    /*shaders["floorShader"]->use();
-    model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(2.0f));
-    shaders["floorShader"]->setMat4("model", model);
-    shaders["floorShader"]->setMat4("view", view);
-    shaders["floorShader"]->setMat4("projection", projection);*/
-}
-
-void Firework::beginAdvanceTimeStep(GLuint count)
-{
-    _neighbour_grids->build(count - 10);
-    /*shaders["densityUpdate"]->use();
-    shaders["densityUpdate"]->setFloat("smoothingKernel", this->_radius);
-    shaders["densityUpdate"]->setFloat("mass", _mass);
-    shaders["densityUpdate"]->setUInt("particleNum", count);
+    densityUpdate->use();
+    densityUpdate->setFloat("smoothingKernel", this->_radius);
+    densityUpdate->setFloat("mass", _mass);
+    densityUpdate->setUInt("particleNum", count);
+    densityUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
     glDispatchCompute((count + 255) / 256, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Firework::accumulateNonPressureForce(GLuint count)
 {
-    shaders["viscosityUpdate"]->use();
-    shaders["viscosityUpdate"]->setFloat("massSquared", _mass * _mass);
-    shaders["viscosityUpdate"]->setFloat("viscosityCoefficient", 0.1f);
-    shaders["viscosityUpdate"]->setFloat("smoothingKernel", _radius);
+    viscosityUpdate->use();
+    viscosityUpdate->setFloat("massSquared", _mass * _mass);
+    viscosityUpdate->setFloat("viscosityCoefficient", 0.5f);
+    viscosityUpdate->setFloat("smoothingKernel", _radius);
+    viscosityUpdate->setUInt("particleNum", count);
+    viscosityUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
     glDispatchCompute((count + 255) / 256, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Firework::accumulatePressureForce(GLuint count)
 {
-    // compute pressure from Eos
-    /* calculate targetDensity, eosScale
-     * for each particle: use helper function and assign new pressure
-     */
-    shaders["pressureCompute"]->use();
-    shaders["pressureCompute"]->setFloat("targetDensity", _targetDensity);
-    shaders["pressureCompute"]->setFloat("eosScale", _targetDensity * (100.0 * 100.0));
-    shaders["pressureCompute"]->setFloat("eosExponent", _eosExponent);
-    shaders["pressureCompute"]->setFloat("negativePressureScale", _negativePressureScale);
+    pressureCompute->use();
+    pressureCompute->setFloat("targetDensity", _targetDensity);
+    pressureCompute->setFloat("eosScale", _targetDensity * (100.0f * 100.0f) / _eosExponent);
+    pressureCompute->setFloat("eosExponent", _eosExponent);
+    pressureCompute->setFloat("negativePressureScale", _negativePressureScale);
+    pressureCompute->setUInt("particleNum", count);
     glDispatchCompute((count + 255) / 256, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
-    /* massSquared, spiky kernel - gradient 
-     * for each particle: for each neighbour get distance, get direction, calculate pressureForce
-     */
-    shaders["pressureUpdate"]->use();
-    shaders["pressureUpdate"]->setFloat("massSquared", _mass * _mass);
-    shaders["pressureUpdate"]->setFloat("smoothingKernel", _radius);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+    pressureUpdate->use();
+    pressureUpdate->setFloat("massSquared", _mass * _mass);
+    pressureUpdate->setFloat("smoothingKernel", _radius);
+    pressureUpdate->setUInt("particleNum", count);
+    pressureUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
     glDispatchCompute((count + 255) / 256, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Firework::timeIntegration(GLuint count, float delta_time)
 {
-	/*
-	 * integrate velocity, integrate position
-	 */
-    shaders["timeIntegration"]->use();
-    shaders["timeIntegration"]->setFloat("mass", _mass);
-    shaders["timeIntegration"]->setFloat("timeStep", delta_time);
-    shaders["timeIntegration"]->setFloat("dampingFactor", 0.95f);
-    shaders["timeIntegration"]->setUInt("count", count);
+    timeIntegrations->use();
+    timeIntegrations->setFloat("mass", _mass);
+    timeIntegrations->setFloat("timeStep", delta_time);
+    timeIntegrations->setUInt("particleNum", count);
+    timeIntegrations->setUInt("maxNeighbourNum", maxNeighbourNum);
     glDispatchCompute((count + 255) / 256, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
-    resetAliveCount(count);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Firework::update(float delta_time)
 {
     GLuint count = getAliveCount();
-    // std::cout << "alive count: " << count << "\n";
-
-    beginAdvanceTimeStep(count);
-    // accumulateNonPressureForce(count);
-    // accumulatePressureForce(count);
-    // timeIntegration(count, delta_time);
+    beginAdvanceTimeStep(count, delta_time);
+    accumulateNonPressureForce(count);
+	//accumulatePressureForce(count);
+    timeIntegration(count, delta_time);
 
     /*shaders["computeShaderUpdate"]->use();
     shaders["computeShaderUpdate"]->setFloat("deltaTime", delta_time);
@@ -338,6 +284,46 @@ void Firework::update(float delta_time)
     /*glBindVertexArray(floorVAO);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glBindVertexArray(0);	*/
+}
+
+void Firework::render(const glm::mat4& view, const glm::mat4& projection)
+{
+    GLuint count = getAliveCount();
+    count += 10;
+    cmd = { 6, count, 0, 0, 0 };
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndirectBuffer);
+    glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, sizeof(cmd), &cmd);
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+    particleShader->use();
+    glm::mat4 model = glm::mat4(1.0f);
+    particleShader->setMat4("model", model);
+    particleShader->setMat4("view", view);
+    particleShader->setMat4("projection", projection);
+
+    if (count > 0)
+    {
+        glBindVertexArray(VAO);
+        glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr);
+        glMemoryBarrier(GL_ALL_BARRIER_BITS);
+    }
+    glBindVertexArray(0);
+
+    /*
+     * to render 3D fluids, the surface was extracted by taking the iso-surface from the SPH density field.
+     * If fluid density is p, p/2 is taken for the isoSurface.
+     * then converted to a triangle mesh using marching cubes algorithm
+     * rendered using a path-tracing renderer
+     */
+
+
+     /*shaders["floorShader"]->use();
+     model = glm::mat4(1.0f);
+     model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
+     model = glm::scale(model, glm::vec3(2.0f));
+     shaders["floorShader"]->setMat4("model", model);
+     shaders["floorShader"]->setMat4("view", view);
+     shaders["floorShader"]->setMat4("projection", projection);*/
 }
 
 void Firework::resetAliveCount(GLuint amount)
@@ -385,26 +371,53 @@ void Firework::addParticleCube(const glm::vec3& origin, float spacing, int parti
 {
     GLuint aliveIndex = getAliveCount();
     int totalParticles = particlesPerSide * particlesPerSide * particlesPerSide;
-    totalParticles += 10;
 
     if (aliveIndex + totalParticles < _max_particles)
     {
         std::vector<glm::vec4> positions;
         std::vector<glm::vec4> velocities;
-        float halfSide = (particlesPerSide - 1) * spacing / 2.0f;
 
+        float halfSide = (particlesPerSide - 1) * spacing / 2.0f;
+        float gap = 0.1f; // Define the gap between the two halves
+        float velocityMagnitude = 0.05f; // Uniform velocity magnitude (towards the other half)
+
+        // Loop to create particles in the split cube
         for (int x = 0; x < particlesPerSide; ++x)
         {
             for (int y = 0; y < particlesPerSide; ++y)
             {
                 for (int z = 0; z < particlesPerSide; ++z)
                 {
+                    // Calculate particle position
                     glm::vec3 pos = origin + glm::vec3(x * spacing - halfSide, y * spacing - halfSide, z * spacing - halfSide);
+
+                    // Adjust the particle position based on whether it's in the left or right half
+                    if (pos.x < origin.x) {
+                        pos.x -= gap / 2.0f;  // Shift left half particles further left by half the gap
+                    }
+                    else {
+                        pos.x += gap / 2.0f;  // Shift right half particles further right by half the gap
+                    }
+
                     positions.emplace_back(pos, firework_lifetime);
-                    velocities.emplace_back(0.0f, 0.0f, 0.0f, firework_lifetime);
+
+                    // Set velocities pointing towards the opposite half
+                    glm::vec3 velocity;
+                    if (pos.x < origin.x) {
+                        velocity = glm::vec3(velocityMagnitude, 0.0f, 0.0f); // Left half particles move right
+                    }
+                    else {
+                        velocity = glm::vec3(-velocityMagnitude, 0.0f, 0.0f); // Right half particles move left
+                    }
+
+                    velocities.emplace_back(velocity, firework_lifetime);
                 }
             }
         }
+
+        positions.emplace_back(0.0, 5.0, 5.0, firework_lifetime);
+        velocities.emplace_back(0.0, 0.0, 0.0, firework_lifetime);
+
         positions.emplace_back(0.0, 0.0, 0.0, firework_lifetime);
         velocities.emplace_back(0.0, 0.0, 0.0, firework_lifetime);
 
@@ -432,18 +445,16 @@ void Firework::addParticleCube(const glm::vec3& origin, float spacing, int parti
         positions.emplace_back(5.0, 5.0, 0.0, firework_lifetime);
         velocities.emplace_back(0.0, 0.0, 0.0, firework_lifetime);
 
-        positions.emplace_back(5.2, 4.8, 7.0, firework_lifetime);
-        velocities.emplace_back(0.0, 0.1, 0.0, firework_lifetime);
-
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, positionsSSBO);
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, aliveIndex * sizeof(glm::vec4), sizeof(glm::vec4) * totalParticles, positions.data());
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, aliveIndex * sizeof(glm::vec4), sizeof(glm::vec4) * (totalParticles + 10), positions.data());
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, velocitiesSSBO);
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, aliveIndex * sizeof(glm::vec4), sizeof(glm::vec4) * totalParticles, velocities.data());
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, aliveIndex * sizeof(glm::vec4), sizeof(glm::vec4) * (totalParticles + 10), velocities.data());
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
         GLuint newAliveCount = aliveIndex + totalParticles;
         glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &newAliveCount);
         glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
+        // set aliveFlags
     }
     else
     {

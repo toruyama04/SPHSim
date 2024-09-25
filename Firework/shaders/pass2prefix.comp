@@ -1,52 +1,39 @@
-#version 460
+#version 430
 
 layout(local_size_x = 256) in;
 
-layout(std430, binding = 13) buffer groupSumsSSBO {
-    uint groupSums[];
+layout(std430, binding = 0) buffer InputBuffer {
+    uint data[];
 };
 
-layout(std430, binding = 14) buffer groupPrefixSumsSSBO {
-    uint groupPrefixSums[];
+layout(std430, binding = 1) buffer BlockSumBuffer {
+    uint blockSums[];
 };
 
-uniform uint numGroups;  // Total number of workgroups
-
-shared uint temp[256];  // Shared memory for prefix sum
+shared uint temp[256];
 
 void main() {
-    uint globalIdx = gl_GlobalInvocationID.x;
-    uint localIdx = gl_LocalInvocationID.x;
+    uint gid = gl_GlobalInvocationID.x;
+    uint lid = gl_LocalInvocationID.x;
+    uint blockId = gl_WorkGroupID.x;
 
-    // Initialize shared memory with group sums
-    if (globalIdx < numGroups) {
-        temp[localIdx] = groupSums[globalIdx];
-    } else {
-        temp[localIdx] = 0;
-    }
-
-    // Synchronize before performing the prefix sum
-    memoryBarrierShared();
+    // Load data into shared memory
+    temp[lid] = data[gid];
     barrier();
 
-    // Perform parallel prefix sum (exclusive scan)
-    for (uint offset = 1; offset < gl_WorkGroupSize.x; offset *= 2) {
-        uint value = 0;
-        if (localIdx >= offset) {
-            value = temp[localIdx - offset];
+    // Perform local scan
+    for (uint offset = 1; offset < 256; offset *= 2) {
+        uint t = 0;
+        if (lid >= offset) {
+            t = temp[lid - offset];
         }
-
-        memoryBarrierShared();
         barrier();
-
-        temp[localIdx] += value;
-
-        memoryBarrierShared();
+        temp[lid] += t;
         barrier();
     }
 
-    // Write the global prefix sum to the output buffer
-    if (globalIdx < numGroups) {
-        groupPrefixSums[globalIdx] = temp[localIdx];
+    // Write block sum to global memory
+    if (lid == 255) {
+        blockSums[blockId] = temp[lid];
     }
 }

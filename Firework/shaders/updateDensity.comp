@@ -6,21 +6,27 @@ layout(std430, binding = 0) buffer Positions {
     vec4 positions[];
 };
 
-layout(std430, binding = 17) buffer NeighbourListSSBO {
-    float neighbourList[];
-};
-
 layout(std430, binding = 6) buffer DensitySSBO {
     float densities[];
 };
 
-layout(std430, binding = 19) buffer EndIndex {
+layout(std430, binding = 14) buffer NeighbourListSSBO {
+    uint neighbourList[];
+};
+
+layout(std430, binding = 16) buffer EndIndex {
     uint endIndex[];
 };
+
+layout(std430, binding = 5) buffer ForcesSSBO {
+    vec4 forces[];
+};
+
 
 uniform float smoothingKernel;
 uniform float mass;
 uniform uint particleNum;
+uniform uint maxNeighbourNum;
 float sk2;
 float sk3;
 float pi = 3.14159265358979323846264338327950288;
@@ -28,35 +34,27 @@ float pi = 3.14159265358979323846264338327950288;
 
 float kernel(float dist)
 {
-    if (dist * dist >= sk2)
-    {
-        return 0.0;
-    }
-    else
-    {
-        float x = 1.0 - dist * dist / sk2;
-        return 315.0 / (64.0 * pi * sk3) * x * x * x;
-    }
+    float x = 1.0 - dist * dist / sk2;
+    return 315.0 / (64.0 * pi * sk3) * x * x * x;
 }
 
 
 void main()
 {
     uint idx = gl_GlobalInvocationID.x;
-
     if (idx >= particleNum) return;
 
     sk2 = smoothingKernel * smoothingKernel;
     sk3 = sk2 * smoothingKernel;
 
-    uint startIndex = idx * 100;
-    uint endIndex = endIndex[idx];
+    uint startIndex = idx * maxNeighbourNum;
+    uint endI = endIndex[idx];
 
     float densitySum = 0.0;
 
-    for (uint i = startIndex; i < endIndex; ++i)
+    for (uint i = startIndex; i < endI; ++i)
     {
-        float dist = neighbourList[startIndex];
+        float dist = distance(positions[idx].xyz, positions[neighbourList[i]].xyz);
         densitySum += kernel(dist);
     }
     densities[idx] = mass * densitySum;
