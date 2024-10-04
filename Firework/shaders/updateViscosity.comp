@@ -28,10 +28,27 @@ layout(std430, binding = 16) buffer EndIndex {
 
 uniform float viscosityCoefficient;
 uniform uint particleNum;
-uniform float smoothingKernel;
+uniform float h;
 uniform uint maxNeighbourNum;
-uniform float spikyCoefficient;
-uniform float massSquared;
+uniform float cubicSpline;
+uniform float mass;
+
+vec3 grad_kernel(vec3 x_ij)
+{
+    float d = length(x_ij);
+    vec3 x_ij_normalised = normalize(x_ij);
+    
+    float grad_w = 0.0;
+    float q = d / h;
+    if (q > 0.0 && q < 1.0) {
+        grad_w = -2.0 + (3 * q);
+        return (3 * cubicSpline) * grad_w * x_ij_normalised;
+    } else if (q >= 1.0 && q < 2.0) {
+        grad_w = 2 - q;
+        return (cubicSpline) * grad_w * x_ij_normalised;
+    }
+    return vec3(0.0, 0.0, 0.0);
+}
 
 
 void main()
@@ -39,9 +56,10 @@ void main()
     uint idx = gl_GlobalInvocationID.x;
     if (idx >= particleNum) return;
 
-    vec3 pos = positions[idx].xyz;
-    vec3 vel = velocity[idx].xyz;
-    vec3 force = vec3(0.0);
+    vec3 x_i = positions[idx].xyz;
+    vec3 v_i = velocity[idx].xyz;
+
+    vec3 viscosityForce = vec3(0.0);
 
     uint startIndex = idx * maxNeighbourNum;
     uint endI = endIndex[idx];
@@ -49,14 +67,19 @@ void main()
     // going through neighbour particles
     for (uint i = startIndex; i < endI; ++i)
     {
-        uint nIndex = neighbourList[i];
-        vec3 posN = positions[nIndex].xyz;
-        vec3 velN = velocity[nIndex].xyz;
-        float densN = densities[nIndex];
+        uint nI = neighbourList[i];
 
-        float dist = distance(pos, posN);
-        float x = 1.0 - dist / smoothingKernel;
-        forces[idx].xyz += viscosityCoefficient * massSquared * (velN - vel) / densN * (spikyCoefficient * x);
+        vec3 x_j = positions[nI].xyz;
+        vec3 v_j = velocity[nI].xyz;
+        float d_j = densities[nI];
+
+        vec3 x_ij = x_i - x_j;
+        vec3 grad_Wij = grad_kernel(x_ij);
+
+        float x_dot_gradW = dot(x_ij, grad_Wij);
+        float x_dot_x = dot(x_ij, x_ij);
+        vec3 a_ij = v_i - v_j;
+        viscosityForce += (mass / d_j) * a_ij * (x_dot_gradW / (x_dot_x + 0.01 * h * h));
     }
-    forces[idx].xyz += force;
+    forces[idx].xyz += mass * viscosityCoefficient * (viscosityForce * 2.0);
 }

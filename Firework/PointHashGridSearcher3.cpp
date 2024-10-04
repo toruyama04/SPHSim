@@ -1,7 +1,7 @@
 ﻿#include "PointHashGridSearcher3.h"
 #include <vector>
 
-PointHashGridSearcher3::PointHashGridSearcher3(GLuint resolutionX, GLuint resolutionY, GLuint resolutionZ, unsigned int particleNum, GLuint maxneighbourNum)
+PointHashGridSearcher3::PointHashGridSearcher3(GLuint resolutionX, GLuint resolutionY, GLuint resolutionZ, GLuint particleNum, GLuint maxneighbourNum)
 {
     glGenBuffers(1, &particleNumPerBinSSBO);
     glGenBuffers(1, &binIndexForParticleSSBO);
@@ -23,7 +23,7 @@ PointHashGridSearcher3::PointHashGridSearcher3(GLuint resolutionX, GLuint resolu
     // Initialize buffers with data
     glNamedBufferData(particleNumPerBinSSBO, sizeof(GLuint) * binCount, initialBinValue.data(), GL_DYNAMIC_DRAW);
     glNamedBufferData(binIndexForParticleSSBO, sizeof(GLuint) * particleNum, nullptr, GL_DYNAMIC_DRAW);
-    glNamedBufferData(prefixForBinReorderSSBO, sizeof(GLuint) * binCount, nullptr, GL_DYNAMIC_DRAW);
+    glNamedBufferData(prefixForBinReorderSSBO, sizeof(GLuint) * binCount, initialBinValue.data(), GL_DYNAMIC_DRAW);
     glNamedBufferData(particlesOrderedByBinSSBO, sizeof(GLuint) * particleNum, nullptr, GL_DYNAMIC_DRAW);
 
     std::vector<GLuint> flatNeighbors(resolutionX * resolutionY * resolutionZ * 27, 111111);
@@ -55,9 +55,9 @@ PointHashGridSearcher3::PointHashGridSearcher3(GLuint resolutionX, GLuint resolu
         }
     }
 
-    glNamedBufferData(flatNeighboursSSBO, flatNeighbors.size() * sizeof(GLuint), flatNeighbors.data(), GL_STATIC_DRAW);
+    glNamedBufferData(flatNeighboursSSBO, sizeof(GLuint) * flatNeighbors.size(), flatNeighbors.data(), GL_STATIC_DRAW);
     glNamedBufferData(prefixIndexCounter, sizeof(GLuint) * binCount, initialBinValue.data(), GL_DYNAMIC_DRAW);
-    glNamedBufferData(neighbourListSSBO, sizeof(GLuint) * particleNum * maxneighbourNum, initialN.data(), GL_DYNAMIC_DRAW);
+    glNamedBufferData(neighbourListSSBO, sizeof(GLuint) * particleNum * maxneighbourNum, nullptr, GL_DYNAMIC_DRAW);
     glNamedBufferData(endIndexNeighbourSSBO, sizeof(GLuint) * particleNum, initialParticleValue.data(), GL_DYNAMIC_DRAW);
 
     // Bind buffers to binding points
@@ -79,14 +79,14 @@ PointHashGridSearcher3::PointHashGridSearcher3(GLuint resolutionX, GLuint resolu
 }
 
 void PointHashGridSearcher3::build(GLuint particleNum, float searchRadius) {
-
+    GLuint groupNum = (particleNum + 255) / 256;
     // Count particles in each bin, assign bin to each particle
     countShader->use();
     countShader->setVec3("gridResolution", resolutionVec);
-    countShader->setVec3("gridOrigin", glm::vec3(0, 0, 0));
-    countShader->setFloat("gridSpacing", 1.0f);
+    countShader->setVec3("gridOrigin", glm::vec3(0.0));
+    countShader->setFloat("gridSpacing", 2 * searchRadius);
     countShader->setUInt("particleNum", particleNum);
-    glDispatchCompute((particleNum + 255) / 256, 1, 1);
+    glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     // Retrieve particle counts per bin
@@ -120,7 +120,7 @@ void PointHashGridSearcher3::build(GLuint particleNum, float searchRadius) {
     // Reorder based on bin number in particlesOrderedByBinSSBO
     reorderShader->use();
     reorderShader->setUInt("particleNum", particleNum);
-    glDispatchCompute((particleNum + 255) / 256, 1, 1);
+    glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     // Build the neighbor list
@@ -128,6 +128,6 @@ void PointHashGridSearcher3::build(GLuint particleNum, float searchRadius) {
     generateNeighbourListShader->setFloat("searchRadius", searchRadius);
     generateNeighbourListShader->setUInt("maxNeighborsPerParticle", maxneighbourNum);
     generateNeighbourListShader->setUInt("particleNum", particleNum);
-    glDispatchCompute((particleNum + 255) / 256, 1, 1);
+    glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }

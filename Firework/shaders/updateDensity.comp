@@ -10,6 +10,10 @@ layout(std430, binding = 6) buffer DensitySSBO {
     float densities[];
 };
 
+layout(std430, binding = 1) buffer Velocities {
+    vec4 velocity[];
+};
+
 layout(std430, binding = 14) buffer NeighbourListSSBO {
     uint neighbourList[];
 };
@@ -18,11 +22,41 @@ layout(std430, binding = 16) buffer EndIndex {
     uint endIndex[];
 };
 
-uniform float smoothingKernel;
+uniform float h;
 uniform float mass;
 uniform uint particleNum;
 uniform uint maxNeighbourNum;
-uniform float poly6Coefficient;
+uniform float cubicSpline;
+uniform float dt;
+
+float kernel(float d)
+{
+    float q = d / h;
+    float res = 0.0;
+    if (q > 0.0 && q < 1.0) {
+        res = (2 / 3) - (q * q) + ((1 / 2) * q * q * q);
+    } else if (q >= 1.0 && q < 2.0) {
+        res = (1 / 6) * pow((2 - q), 3);
+    } 
+    return 3 * cubicSpline * res;
+}
+
+vec3 grad_kernel(vec3 x_ij)
+{
+    float d = length(x_ij);
+    vec3 x_ij_normalised = normalize(x_ij);
+    
+    float grad_w = 0.0;
+    float q = d / h;
+    if (q > 0.0 && q < 1.0) {
+        grad_w = -2.0 + (3 * q);
+        return (3 * cubicSpline) * grad_w * x_ij_normalised;
+    } else if (q >= 1.0 && q < 2.0) {
+        grad_w = 2 - q;
+        return (cubicSpline) * grad_w * x_ij_normalised;
+    }
+    return vec3(0.0, 0.0, 0.0);
+}
 
 void main()
 {
@@ -33,16 +67,23 @@ void main()
     uint endI = endIndex[idx];
 
     float densitySum = 0.0;
-    vec3 cpos = positions[idx].xyz;
+    float densitySum2 = 0.0;
+
+    vec3 x_i = positions[idx].xyz;
+    vec3 v_i = velocity[idx].xyz;
 
     // going through each neighbour
     for (uint i = startIndex; i < endI; ++i)
     {
-        uint nIndex = neighbourList[i];
-        float dist = distance(cpos, positions[nIndex].xyz);
+        uint ni = neighbourList[i];
+        vec3 x_j = positions[ni].xyz;
+        float dist = distance(x_i, x_j);
+        vec3 v_j = velocity[ni].xyz;
+        vec3 dir = x_i - x_j;
 
-        float x = 1.0 - (dist * dist) / (smoothingKernel * smoothingKernel);
-        densitySum += poly6Coefficient * x * x * x;
+        densitySum += (mass * kernel(dist));
+        vec3 v_ij = v_i - v_j;
+        densitySum2 += dot(v_ij, grad_kernel(dir));
     }
-    densities[idx] = densitySum * mass;
+    densities[idx] = densitySum + (dt * densitySum2);
 }

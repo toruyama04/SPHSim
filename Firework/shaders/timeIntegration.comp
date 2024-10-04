@@ -14,13 +14,8 @@ layout(std430, binding = 5) buffer ForcesSSBO {
     vec4 forces[];
 };
 
-layout(std430, binding = 6) buffer DensitySSBO {
-    float densities[];
-};
-
-
 uniform float mass;
-uniform float timeStep;
+uniform float dt;
 uniform uint particleNum;
 uniform vec3 boundaryMin;
 uniform vec3 boundaryMax;
@@ -33,15 +28,9 @@ void main()
     vec3 pos = positions[idx].xyz;
     vec3 vel = velocities[idx].xyz;
     vec3 force = forces[idx].xyz;
-    float dens = densities[idx];
     
-    if (dens != 0.0)
-        vel += (force / mass) * timeStep;
-
-    vel *= 0.99;
-
-    velocities[idx].xyz = vel;
-    pos += vel * timeStep;
+    vel += dt * (force / mass);
+    //pos += dt * vel;
 
     if (pos.x < boundaryMin.x) {
         pos.x = boundaryMin.x;

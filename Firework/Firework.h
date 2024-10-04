@@ -39,10 +39,8 @@ private:
 
 	// particleSystemData
 	float _radius = 1.0f;
-	float eosExponent = 1.4f;
-	float _mass = 75.0;
+	float _mass = 1000.0;
 	GLuint maxNeighbourNum = 100;
-	glm::vec3 _gravity = glm::vec3(0.0f, 2.0f, 0.0f);
 	float _targetDensity = 1000.0f;
 
 	std::unique_ptr<Shader> particleShader;
@@ -52,6 +50,7 @@ private:
 	std::unique_ptr<Shader> pressureUpdate;
 	std::unique_ptr<Shader> timeIntegrations;
 	std::unique_ptr<Shader> resetShader;
+	std::unique_ptr<Shader> velocityIntermediate;
 
 	std::unique_ptr<PointHashGridSearcher3> _neighbour_grids;
 

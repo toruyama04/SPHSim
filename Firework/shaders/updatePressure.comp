@@ -26,15 +26,28 @@ layout(std430, binding = 6) buffer DensitySSBO {
     float densities[];
 };
 
-layout(std430, binding = 2) buffer TestSSBO {
-    vec4 test[];
-};
-
-uniform float smoothingKernel;
+uniform float h;
 uniform uint particleNum;
 uniform uint maxNeighbourNum;
-uniform float poly6Coefficient;
-uniform float massSquared;
+uniform float cubicSpline;
+uniform float mass;
+
+vec3 grad_kernel(vec3 x_ij)
+{
+    float d = length(x_ij);
+    vec3 x_ij_normalised = normalize(x_ij);
+    
+    float grad_w = 0.0;
+    float q = d / h;
+    if (q > 0.0 && q < 1.0) {
+        grad_w = -2.0 + (3 * q);
+        return (3 * cubicSpline) * grad_w * x_ij_normalised;
+    } else if (q >= 1.0 && q < 2.0) {
+        grad_w = 2 - q;
+        return (cubicSpline) * grad_w * x_ij_normalised;
+    }
+    return vec3(0.0, 0.0, 0.0);
+}
 
 void main()
 {
@@ -43,22 +56,19 @@ void main()
 
     uint startIndex = idx * maxNeighbourNum;
     uint endI = endIndex[idx];
-    vec3 cpos = positions[idx].xyz;
-    float dens = densities[idx];
+
+    vec3 x_i = positions[idx].xyz;
+    float d_i = densities[idx];
+
+    vec3 pressureVal = vec3(0.0);
 
     for (uint i = startIndex; i < endI; ++i)
     {
-        uint nIndex = neighbourList[i];
-        positions[idx].w = nIndex;
-        float dist = distance(cpos, positions[nIndex].xyz);
-        // test[idx].w = dist;
-        if (dist > 0.0)
-        {
-            vec3 dir = (cpos - positions[nIndex].xyz) / dist;
-            float x = 1.0 - dist / smoothingKernel;
-            vec3 gradient = (-1.0 * (poly6Coefficient * x * x)) * dir;
-            // test[idx].xyz = gradient;
-            forces[idx].xyz = massSquared * ((pressures[idx] / (dens * dens)) + (pressures[nIndex] / (densities[nIndex] * densities[nIndex]))) * gradient;
-        }
+        uint ni = neighbourList[i];
+
+        vec3 d = x_i - positions[ni].xyz;
+        
+        pressureVal = mass * ((pressures[idx] / (d_i * d_i)) + (pressures[ni] / pow(densities[ni], 2.0)) * grad_kernel(d);
     }
+    forces[idx].xyz = ((-1 * mass) / d_i) * (d_i * pressureVal);
 }

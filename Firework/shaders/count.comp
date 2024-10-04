@@ -26,23 +26,20 @@ void main()
     if (idx >= particleNum) return;
 
     vec3 pos = positions[idx].xyz;
+    vec3 gridPos = (pos - gridOrigin) / gridSpacing;
 
-    float gridPosx = floor(pos.x);
-    float gridPosy = floor(pos.y);
-    float gridPosz = floor(pos.z);
+    float gridPosx = floor(gridPos.x);
+    float gridPosy = floor(gridPos.y);
+    float gridPosz = floor(gridPos.z);
 
-    // Ensure the particle is within the grid bounds
-    if (gridPosx < gridResolution.x &&
-        gridPosy < gridResolution.y &&
-        gridPosz < gridResolution.z) {
+    if (gridPosx >= 0 && gridPosx < gridResolution.x &&
+        gridPosy >= 0 && gridPosy < gridResolution.y &&
+        gridPosz >= 0 && gridPosz < gridResolution.z) {
 
-        // Compute the 1D bin index from 3D grid coordinates
         uint binIndex = uint(gridPosx + (gridPosy * gridResolution.x) + (gridPosz * gridResolution.x * gridResolution.y));
 
-        // Assign the bin index to the particle
         particleBinIndex[idx] = binIndex;
 
-        // Atomically increment the bin count
         atomicAdd(bins[binIndex], 1);
     } else {
         positions[idx].w = -1.0;

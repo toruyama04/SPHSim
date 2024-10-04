@@ -1,0 +1,24 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(std430, binding = 1) buffer Velocities {
+    vec4 velocity[];
+};
+
+layout(std430, binding = 5) buffer ForcesSSBO {
+    vec4 forces[];
+};
+
+uniform uint particleNum;
+uniform float dt;
+uniform float mass;
+
+void main()
+{
+    uint idx = gl_GlobalInvocationID.x;
+
+    if (idx >= particleNum) return;
+
+    velocity[idx].xyz += dt * (forces[idx].xyz / mass);
+}

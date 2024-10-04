@@ -170,6 +170,7 @@
     <None Include="shaders\computePressure.comp" />
     <None Include="shaders\updatePressure.comp" />
     <None Include="shaders\updateViscosity.comp" />
+    <None Include="shaders\updateVelocity.comp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="smoke.png" />

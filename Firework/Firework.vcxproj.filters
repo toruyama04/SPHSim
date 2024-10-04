@@ -69,6 +69,7 @@
     <None Include="shaders\updatePressure.comp" />
     <None Include="shaders\timeIntegration.comp" />
     <None Include="shaders\resetShader.comp" />
+    <None Include="shaders\updateVelocity.comp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="smoke.png">
