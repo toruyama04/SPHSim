@@ -79,10 +79,6 @@ PointHashGridSearcher3::PointHashGridSearcher3(GLuint resolutionX, GLuint resolu
 }
 
 void PointHashGridSearcher3::build(GLuint particleNum, float searchRadius) {
-    std::vector<GLuint> initialOffset(binCount, 0);
-
-    glNamedBufferSubData(particleNumPerBinSSBO, 0, binCount * sizeof(GLuint), initialOffset.data());
-    glNamedBufferSubData(prefixIndexCounter, 0, binCount * sizeof(GLuint), initialOffset.data());
 
     // Count particles in each bin, assign bin to each particle
     countShader->use();
@@ -129,7 +125,7 @@ void PointHashGridSearcher3::build(GLuint particleNum, float searchRadius) {
 
     // Build the neighbor list
     generateNeighbourListShader->use();
-    generateNeighbourListShader->setFloat("searchRadius", 1.0f);
+    generateNeighbourListShader->setFloat("searchRadius", searchRadius);
     generateNeighbourListShader->setUInt("maxNeighborsPerParticle", maxneighbourNum);
     generateNeighbourListShader->setUInt("particleNum", particleNum);
     glDispatchCompute((particleNum + 255) / 256, 1, 1);

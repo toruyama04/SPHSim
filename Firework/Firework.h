@@ -22,16 +22,9 @@ public:
 	~Firework();
 
 	void render(const glm::mat4& view, const glm::mat4& projection);
-
-
 	void update(float delta_time);
 
-	void beginAdvanceTimeStep(GLuint count, float delta_time);
-	void accumulateNonPressureForce(GLuint count);
-	void accumulatePressureForce(GLuint count);
-	void timeIntegration(GLuint count, float delta_time);
-
-	void addFirework(const glm::vec3& origin);
+	//void addFirework(const glm::vec3& origin);
 	void addParticleCube(const glm::vec3& origin, float spacing, int particlesPerSide);
 
 	GLuint getAliveCount();
@@ -41,17 +34,16 @@ private:
 	void initBuffers();
 	void initShaders();
 
-	unsigned int _particle_num, _max_particles, _firework_num;
+	unsigned int _max_particles;
 	float firework_lifetime;
 
 	// particleSystemData
 	float _radius = 1.0f;
-	float _mass = 0.5f;
-	GLuint maxNeighbourNum = 60;
+	float eosExponent = 1.4f;
+	float _mass = 75.0;
+	GLuint maxNeighbourNum = 100;
 	glm::vec3 _gravity = glm::vec3(0.0f, 2.0f, 0.0f);
-	float _targetDensity = 8.0f;
-	float _eosExponent = 7.0;
-	float _negativePressureScale = 0.0;
+	float _targetDensity = 1000.0f;
 
 	std::unique_ptr<Shader> particleShader;
 	std::unique_ptr<Shader> densityUpdate;
@@ -64,7 +56,7 @@ private:
 	std::unique_ptr<PointHashGridSearcher3> _neighbour_grids;
 
 	GLuint VBO, VAO, EBO;
-	GLuint positionsSSBO, velocitiesSSBO, aliveFlagSSBO, forcesSSBO, densitiesSSBO, pressureSSBO;
+	GLuint positionsSSBO, velocitiesSSBO, aliveFlagSSBO, forcesSSBO, densitiesSSBO, pressureSSBO, testSSBO;
 	GLuint atomicCounterBuffer;
 	GLuint drawIndirectBuffer;
 	// GLuint particleTexture;

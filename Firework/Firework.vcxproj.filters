@@ -61,7 +61,6 @@
     <None Include="shaders\particle.frag" />
     <None Include="shaders\particle.vert" />
     <None Include="shaders\count.comp" />
-    <None Include="shaders\pass1prefix.comp" />
     <None Include="shaders\reorder.comp" />
     <None Include="shaders\buildNeighbourList.comp" />
     <None Include="shaders\updateDensity.comp" />
@@ -69,8 +68,6 @@
     <None Include="shaders\computePressure.comp" />
     <None Include="shaders\updatePressure.comp" />
     <None Include="shaders\timeIntegration.comp" />
-    <None Include="shaders\pass2prefix.comp" />
-    <None Include="shaders\pass3prefix.comp" />
     <None Include="shaders\resetShader.comp" />
   </ItemGroup>
   <ItemGroup>

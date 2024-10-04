@@ -29,12 +29,12 @@ unsigned int indices[] = {
 Firework::Firework()
 {
     firework_lifetime = 3.0f;
-    _particle_num = 10240;
     _max_particles = 102400;
 
 	initBuffers();
 	initShaders();
 
+    // make it able to take variable number of particles (think it can already)
     _neighbour_grids = std::make_unique<PointHashGridSearcher3>(10, 10, 10, 1000, maxNeighbourNum);
 }
 
@@ -58,10 +58,6 @@ void Firework::initShaders()
     pressureUpdate = std::make_unique<Shader>("shaders/updatePressure.comp");
     timeIntegrations = std::make_unique<Shader>("shaders/timeIntegration.comp");
     resetShader = std::make_unique<Shader>("shaders/resetShader.comp");
-    // shaders["computeShaderPrefix"] = std::make_unique<Shader>("shaders/particlePrefix.comp");
-    // shaders["computeShaderTrail"] = std::make_unique<Shader>("shaders/particleTrail.comp");
-    // shaders["computeShaderReorder"] = std::make_unique<Shader>("shaders/particleReorder.comp");
-    // shaders["computeShaderDenPre"] = std::make_unique<Shader>("shaders/particleDenPre.comp");
 }
 
 void Firework::initBuffers()
@@ -77,6 +73,7 @@ void Firework::initBuffers()
     glGenBuffers(1, &densitiesSSBO);
     glGenBuffers(1, &pressureSSBO);
 	glGenBuffers(1, &drawIndirectBuffer);
+    glGenBuffers(1, &testSSBO);
 
 	glBindVertexArray(VAO);
 
@@ -134,6 +131,10 @@ void Firework::initBuffers()
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * _max_particles, default_velocity.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, velocitiesSSBO);
 
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, testSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * _max_particles, default_velocity.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, testSSBO);
+
     // initialising alive flag SSBO with default values
     // 4
     std::vector<int> flag_default(_max_particles, 0);
@@ -147,9 +148,10 @@ void Firework::initBuffers()
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, forcesSSBO);
 
     // 6
+    std::vector<float> defaultDensity(_max_particles, 1000.0f);
     std::vector<float> defaultFloat(_max_particles, 0.0f);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, densitiesSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * _max_particles, defaultFloat.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * _max_particles, defaultDensity.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, densitiesSSBO);
 
     // 7
@@ -180,8 +182,15 @@ void Firework::initBuffers()
     }*/
 }
 
-void Firework::beginAdvanceTimeStep(GLuint count, float delta_time)
+void Firework::update(float delta_time)
 {
+    GLuint count = getAliveCount();
+    resetShader->use();
+    resetShader->setUInt("particleNum", count);
+    resetShader->setUInt("maxN", maxNeighbourNum);
+    glDispatchCompute((count + 255) / 256, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
     _neighbour_grids->build(count, this->_radius);
 
     densityUpdate->use();
@@ -189,101 +198,49 @@ void Firework::beginAdvanceTimeStep(GLuint count, float delta_time)
     densityUpdate->setFloat("mass", _mass);
     densityUpdate->setUInt("particleNum", count);
     densityUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
+    float polyC = 315.0f / (64.0f * 3.14159265359f * std::pow(_radius, 3.0f));
+    densityUpdate->setFloat("poly6Coefficient", polyC);
     glDispatchCompute((count + 255) / 256, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-}
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
 
-void Firework::accumulateNonPressureForce(GLuint count)
-{
-    viscosityUpdate->use();
-    viscosityUpdate->setFloat("massSquared", _mass * _mass);
-    viscosityUpdate->setFloat("viscosityCoefficient", 0.5f);
-    viscosityUpdate->setFloat("smoothingKernel", _radius);
-    viscosityUpdate->setUInt("particleNum", count);
-    viscosityUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
-    glDispatchCompute((count + 255) / 256, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-}
-
-void Firework::accumulatePressureForce(GLuint count)
-{
     pressureCompute->use();
     pressureCompute->setFloat("targetDensity", _targetDensity);
-    pressureCompute->setFloat("eosScale", _targetDensity * (100.0f * 100.0f) / _eosExponent);
-    pressureCompute->setFloat("eosExponent", _eosExponent);
-    pressureCompute->setFloat("negativePressureScale", _negativePressureScale);
+    pressureCompute->setFloat("eosExponent", eosExponent);
+    pressureCompute->setFloat("eosScale", _targetDensity * 100 / eosExponent);
+    pressureCompute->setFloat("negativePressureScale", 0.0);
     pressureCompute->setUInt("particleNum", count);
     glDispatchCompute((count + 255) / 256, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     pressureUpdate->use();
-    pressureUpdate->setFloat("massSquared", _mass * _mass);
+    float polyCP = -45.0f / (3.14159265359f * std::pow(_radius, 4.0f));
+    pressureUpdate->setFloat("poly6Coefficient", polyCP);
     pressureUpdate->setFloat("smoothingKernel", _radius);
     pressureUpdate->setUInt("particleNum", count);
     pressureUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
+    pressureUpdate->setFloat("massSquared", _mass * _mass);
     glDispatchCompute((count + 255) / 256, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-}
 
-void Firework::timeIntegration(GLuint count, float delta_time)
-{
+    /*viscosityUpdate->use();
+    float spiky = 90.0f / (3.14159265359f * std::pow(_radius, 5.0f));
+    viscosityUpdate->setFloat("spikyCoefficient", spiky);
+    viscosityUpdate->setFloat("viscosityCoefficient", 5.0f);
+    viscosityUpdate->setFloat("smoothingKernel", _radius);
+    viscosityUpdate->setUInt("particleNum", count);
+    viscosityUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
+    viscosityUpdate->setFloat("massSquared", _mass * _mass);
+    glDispatchCompute((count + 255) / 256, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);*/
+
     timeIntegrations->use();
     timeIntegrations->setFloat("mass", _mass);
     timeIntegrations->setFloat("timeStep", delta_time);
     timeIntegrations->setUInt("particleNum", count);
-    timeIntegrations->setUInt("maxNeighbourNum", maxNeighbourNum);
+    timeIntegrations->setVec3("boundaryMin", glm::vec3(0.0, 0.0, 0.0));
+    timeIntegrations->setVec3("boundaryMax", glm::vec3(10.0, 10.0, 10.0));
     glDispatchCompute((count + 255) / 256, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-}
-
-void Firework::update(float delta_time)
-{
-    GLuint count = getAliveCount();
-    beginAdvanceTimeStep(count, delta_time);
-    accumulateNonPressureForce(count);
-	//accumulatePressureForce(count);
-    timeIntegration(count, delta_time);
-
-    /*shaders["computeShaderUpdate"]->use();
-    shaders["computeShaderUpdate"]->setFloat("deltaTime", delta_time);
-    shaders["computeShaderUpdate"]->setVec3("grav", _gravity);
-    shaders["computeShaderUpdate"]->setFloat("noiseScale", 0.8f); // Scale for noise field
-    shaders["computeShaderUpdate"]->setFloat("noiseSpeed", 0.4f); // Speed for noise field
-    shaders["computeShaderUpdate"]->setFloat("dampingFactor", 0.995f); // Damping factor
-    glDispatchCompute((_max_particles + 255) / 256, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
-    
-    // prefix sum
-    /*shaders["computeShaderPrefix"]->use();
-    glDispatchCompute((_max_particles + 1023) / 1024, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
-
-    // reorder
-    /*shaders["computeShaderReorder"]->use();
-    glDispatchCompute((_max_particles + 1023) / 1024, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
-
-    // add trail particles
-    /** what happens when we add more fireworks?
-     * may need to add trails before prefix/reorder - make sure to flag trails as alive when adding
-     * change dispatch to the number of alive particles (getAliveCount())
-     * in computeShader, add another or extend aliveFlag SSBO to indicate whether trail or not
-     * change particleTrail so it adds to aliveCount if the aliveparticle is a firework particle, else return early
-     */
-    /* second issue: since aliveCount contains trail particles, they are being updated as normal
-     *      however, they are not differentiated from firework particles. May just include another
-     *      SSBO for trail or not and another atomic counter for finding the right index to draw
-     *      the trail particle.
-     */
-    /*shaders["computeShaderTrail"]->use();
-    shaders["computeShaderTrail"]->setFloat("trailRate", 0.9f);
-    shaders["computeShaderTrail"]->setUInt("maxParticle", _max_particles);
-    glDispatchCompute((particle_num + 255) / 256, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);*/
-
-    /*glBindVertexArray(floorVAO);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    glBindVertexArray(0);	*/
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
 }
 
 void Firework::render(const glm::mat4& view, const glm::mat4& projection)
@@ -337,7 +294,7 @@ void Firework::resetAliveCount(GLuint amount)
     glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
 }
 
-void Firework::addFirework(const glm::vec3& origin)
+/*void Firework::addFirework(const glm::vec3& origin)
 {
     GLuint aliveIndex = getAliveCount();
     if (aliveIndex + _particle_num < _max_particles)
@@ -365,6 +322,12 @@ void Firework::addFirework(const glm::vec3& origin)
     }
     else
         std::cout << "exceeded max particle num\n";
+}*/
+
+float randomFloat(float min, float max) {
+    static std::default_random_engine e;
+    static std::uniform_real_distribution<> dis(min, max); // range [min, max]
+    return dis(e);
 }
 
 void Firework::addParticleCube(const glm::vec3& origin, float spacing, int particlesPerSide)
@@ -379,7 +342,8 @@ void Firework::addParticleCube(const glm::vec3& origin, float spacing, int parti
 
         float halfSide = (particlesPerSide - 1) * spacing / 2.0f;
         float gap = 0.1f; // Define the gap between the two halves
-        float velocityMagnitude = 0.05f; // Uniform velocity magnitude (towards the other half)
+        float baseVelocityMagnitude = 0.05f; // Base uniform velocity magnitude (towards the other half)
+        float velocityVariation = 0.02f; // Variation in velocity magnitude
 
         // Loop to create particles in the split cube
         for (int x = 0; x < particlesPerSide; ++x)
@@ -401,13 +365,14 @@ void Firework::addParticleCube(const glm::vec3& origin, float spacing, int parti
 
                     positions.emplace_back(pos, firework_lifetime);
 
-                    // Set velocities pointing towards the opposite half
+                    // Set velocities pointing towards the opposite half with a slight random variation
                     glm::vec3 velocity;
+                    float randomVelocity = baseVelocityMagnitude + randomFloat(-velocityVariation, velocityVariation);
                     if (pos.x < origin.x) {
-                        velocity = glm::vec3(velocityMagnitude, 0.0f, 0.0f); // Left half particles move right
+                        velocity = glm::vec3(randomVelocity, randomFloat(-velocityVariation, velocityVariation), randomFloat(-velocityVariation, velocityVariation)); // Left half particles move right
                     }
                     else {
-                        velocity = glm::vec3(-velocityMagnitude, 0.0f, 0.0f); // Right half particles move left
+                        velocity = glm::vec3(-randomVelocity, randomFloat(-velocityVariation, velocityVariation), randomFloat(-velocityVariation, velocityVariation)); // Right half particles move left
                     }
 
                     velocities.emplace_back(velocity, firework_lifetime);

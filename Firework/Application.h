@@ -25,9 +25,9 @@ public:
 
 private:
 	Firework* firework = nullptr;
-
-	float deltaTime;
+	float fixedTimeStep = 0.0075f;
 	float lastFrame;
+	float accumulator;
 	GLFWwindow* window = nullptr;
 	Camera* camera = nullptr;
 	double last_x;

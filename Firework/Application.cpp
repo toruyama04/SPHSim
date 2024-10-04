@@ -93,7 +93,6 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
     glViewport(0, 0, frame_width, frame_height);
 
     first_mouse = true;
-    deltaTime = 0.0f;
     lastFrame = 0.0f;
     this->screen_height = screen_height;
     this->screen_width = screen_width;
@@ -119,6 +118,8 @@ Application::~Application()
 
 void Application::run()
 {
+    accumulator = 0.0f;
+    lastFrame = 0.0f;
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	while (!glfwWindowShouldClose(window))
@@ -127,13 +128,18 @@ void Application::run()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         float currentFrame = static_cast<float>(glfwGetTime());
-        deltaTime = currentFrame - lastFrame;
+        float frameTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+        accumulator += frameTime;
 
         processInput();
         glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 
-        firework->update(deltaTime);
+        while (accumulator >= fixedTimeStep)
+        {
+            firework->update(fixedTimeStep);
+            accumulator -= fixedTimeStep;
+        }
 
         glm::mat4 view = camera->GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(camera->Zoom), static_cast<float>(screen_width) / static_cast<float>(screen_height), 0.1f, 100.0f);
@@ -182,11 +188,11 @@ void Application::processInput()
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera->ProcessKeyboard(FORWARD, deltaTime);
+        camera->ProcessKeyboard(FORWARD, 0.001f);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera->ProcessKeyboard(BACKWARD, deltaTime);
+        camera->ProcessKeyboard(BACKWARD, 0.001f);
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera->ProcessKeyboard(LEFT, deltaTime);
+        camera->ProcessKeyboard(LEFT, 0.001f);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera->ProcessKeyboard(RIGHT, deltaTime);
+        camera->ProcessKeyboard(RIGHT, 0.001f);
 }

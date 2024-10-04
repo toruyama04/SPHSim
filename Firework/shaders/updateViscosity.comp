@@ -10,12 +10,12 @@ layout(std430, binding = 1) buffer Velocities {
     vec4 velocity[];
 };
 
-layout(std430, binding = 6) buffer DensitySSBO {
-    float densities[];
-};
-
 layout(std430, binding = 5) buffer ForcesSSBO {
     vec4 forces[];
+};
+
+layout(std430, binding = 6) buffer DensitySSBO {
+    float densities[];
 };
 
 layout(std430, binding = 14) buffer NeighbourListSSBO {
@@ -26,20 +26,12 @@ layout(std430, binding = 16) buffer EndIndex {
     uint endIndex[];
 };
 
-uniform float massSquared;
 uniform float viscosityCoefficient;
-uniform float particleNum;
+uniform uint particleNum;
 uniform float smoothingKernel;
 uniform uint maxNeighbourNum;
-float sk5;
-float pi = 3.14159265358979323846264338327950288;
-
-
-float secondD(float dist)
-{
-    float x = 1.0 - dist / smoothingKernel;
-    return 90.0 / (pi * sk5) * x;
-}
+uniform float spikyCoefficient;
+uniform float massSquared;
 
 
 void main()
@@ -47,7 +39,9 @@ void main()
     uint idx = gl_GlobalInvocationID.x;
     if (idx >= particleNum) return;
 
-    sk5 = smoothingKernel * smoothingKernel * smoothingKernel * smoothingKernel * smoothingKernel;
+    vec3 pos = positions[idx].xyz;
+    vec3 vel = velocity[idx].xyz;
+    vec3 force = vec3(0.0);
 
     uint startIndex = idx * maxNeighbourNum;
     uint endI = endIndex[idx];
@@ -56,7 +50,13 @@ void main()
     for (uint i = startIndex; i < endI; ++i)
     {
         uint nIndex = neighbourList[i];
-        float dist = distance(positions[idx].xyz, positions[nIndex].xyz);
-        forces[idx].xyz += viscosityCoefficient * massSquared * (velocity[nIndex].xyz - velocity[idx].xyz) / densities[nIndex] * secondD(dist);
+        vec3 posN = positions[nIndex].xyz;
+        vec3 velN = velocity[nIndex].xyz;
+        float densN = densities[nIndex];
+
+        float dist = distance(pos, posN);
+        float x = 1.0 - dist / smoothingKernel;
+        forces[idx].xyz += viscosityCoefficient * massSquared * (velN - vel) / densN * (spikyCoefficient * x);
     }
+    forces[idx].xyz += force;
 }

@@ -13,16 +13,18 @@ layout(std430, binding = 7) buffer PressureSSBO {
 uniform float targetDensity;
 uniform float eosScale;
 uniform float eosExponent;
-uniform float negativePressureScale;
 uniform uint particleNum;
+uniform float negativePressureScale;
 
 void main()
 {
     uint idx = gl_GlobalInvocationID.x;
     if (idx >= particleNum) return;
 
-    float p = eosScale / eosExponent * (pow((densities[idx] / targetDensity), eosExponent) - 1.0);
-    if (p < 0) {
+    float dens = densities[idx];
+    float p = eosScale / eosExponent * (pow((dens / targetDensity), eosExponent) - 1.0);
+    if (p < 0.0) 
+    {
         p *= negativePressureScale;
     }
     pressures[idx] = p;
