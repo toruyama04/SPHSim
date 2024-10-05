@@ -40,13 +40,13 @@ vec3 grad_kernel(vec3 x_ij)
     float grad_w = 0.0;
     float q = d / h;
     if (q > 0.0 && q < 1.0) {
-        grad_w = -2.0 + (3 * q);
-        return (3 * cubicSpline) * grad_w * x_ij_normalised;
+        grad_w = -2.0 + (3.0 * q);
+        return (3.0 * cubicSpline) * grad_w * x_ij_normalised;
     } else if (q >= 1.0 && q < 2.0) {
-        grad_w = 2 - q;
+        grad_w = 2.0 - q;
         return (cubicSpline) * grad_w * x_ij_normalised;
     }
-    return vec3(0.0, 0.0, 0.0);
+    return vec3(0.0);
 }
 
 void main()
@@ -70,5 +70,5 @@ void main()
         
         pressureVal = mass * (pressures[idx] / (d_i * d_i)) + (pressures[ni] / pow(densities[ni], 2.0)) * grad_kernel(d);
     }
-    forces[idx].xyz = ((-1 * mass) / d_i) * (d_i * pressureVal);
+    forces[idx].xyz = ((-1.0 * mass) / d_i) * (d_i * pressureVal);
 }

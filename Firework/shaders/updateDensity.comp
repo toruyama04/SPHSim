@@ -34,28 +34,31 @@ float kernel(float d)
     float q = d / h;
     float res = 0.0;
     if (q > 0.0 && q < 1.0) {
-        res = (2 / 3) - (q * q) + ((1 / 2) * q * q * q);
+        res = 1.0 - ((3.0 / 2.0) * q * q) + ((3.0 / 4.0) * q * q * q);
     } else if (q >= 1.0 && q < 2.0) {
-        res = (1 / 6) * pow((2 - q), 3);
+        res = (1.0 / 4.0) * (pow((2.0 - q), 3.0));
     } 
-    return 3 * cubicSpline * res;
+    return cubicSpline * res;
 }
 
 vec3 grad_kernel(vec3 x_ij)
 {
     float d = length(x_ij);
-    vec3 x_ij_normalised = normalize(x_ij);
+    if (d == 0) return vec3(0.0);
+
+    vec3 x_ij_normalised = x_ij / d;
     
     float grad_w = 0.0;
     float q = d / h;
+
     if (q > 0.0 && q < 1.0) {
-        grad_w = -2.0 + (3 * q);
-        return (3 * cubicSpline) * grad_w * x_ij_normalised;
+        grad_w = -3.0 * q + ((9.0 / 4.0) * q * q);
+        return cubicSpline * grad_w * x_ij_normalised;
     } else if (q >= 1.0 && q < 2.0) {
-        grad_w = 2 - q;
-        return (cubicSpline) * grad_w * x_ij_normalised;
+        grad_w = -((3.0 / 4.0) * pow((2 - q), 2.0));
+        return cubicSpline * grad_w * x_ij_normalised;
     }
-    return vec3(0.0, 0.0, 0.0);
+    return vec3(0.0);
 }
 
 void main()

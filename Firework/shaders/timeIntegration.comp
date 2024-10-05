@@ -30,7 +30,7 @@ void main()
     vec3 force = forces[idx].xyz;
     
     vel += dt * (force / mass);
-    //pos += dt * vel;
+    // pos += dt * vel;
 
     if (pos.x < boundaryMin.x) {
         pos.x = boundaryMin.x;

@@ -153,8 +153,9 @@ void Firework::initBuffers()
 
     // 6
     std::vector<float> defaultFloat(_max_particles, 0.0f);
+    std::vector<float> defaultDensity(_max_particles, 1000.0f);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, densitiesSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * _max_particles, nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * _max_particles, defaultDensity.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, densitiesSSBO);
 
     // 7
@@ -200,8 +201,8 @@ void Firework::update(float delta_time)
 
     // calculate non-pressure forces to find intermediate velocity v*
     // use Eq 8
-    viscosityUpdate->use();
-    float cubicSpline = 1 / (2 * 3.14159265359f * std::pow(_radius, 3.0f));
+    float cubicSpline = 1 / (3.14159265359f * std::pow(_radius, 3.0f));
+	/*viscosityUpdate->use();
 	viscosityUpdate->setFloat("cubicSpline", cubicSpline);
 	viscosityUpdate->setFloat("viscosityCoefficient", 1.0f);
 	viscosityUpdate->setFloat("h", _radius);
@@ -209,14 +210,14 @@ void Firework::update(float delta_time)
 	viscosityUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
 	viscosityUpdate->setFloat("mass", _mass);
 	glDispatchCompute(groupNum, 1, 1);
-	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);*/
 
-    velocityIntermediate->use();
+    /*velocityIntermediate->use();
     velocityIntermediate->setFloat("dt", delta_time);
     velocityIntermediate->setFloat("mass", _mass);
     velocityIntermediate->setUInt("particleNum", count);
     glDispatchCompute(groupNum, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);*/
 
     // calculate new density using intermediate velocity v*
     // use Eq in Algo 2
@@ -231,7 +232,7 @@ void Firework::update(float delta_time)
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
 
     // use Eq 9
-    pressureCompute->use();
+    /*pressureCompute->use();
     pressureCompute->setFloat("targetDensity", _targetDensity);
     pressureCompute->setFloat("k", 10000.0f);
     pressureCompute->setFloat("negativePressureScale", 0.0);
@@ -247,7 +248,7 @@ void Firework::update(float delta_time)
     pressureUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
     pressureUpdate->setFloat("mass", _mass);
     glDispatchCompute(groupNum, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);*/
 
     timeIntegrations->use();
     timeIntegrations->setFloat("mass", _mass);
