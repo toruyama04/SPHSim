@@ -57,13 +57,14 @@ void main() {
 
         // Iterate over all particles in the neighboring bin
         for (uint j = neighborBinStart; j < neighborBinEnd; ++j) {
-            vec3 neighborPos = positions[particlesOrderedByBin[j]].xyz;
+            uint nIndex = particlesOrderedByBin[j];
+            vec3 neighborPos = positions[nIndex].xyz;
             float dist = distance(particlePos, neighborPos);
-            if (dist > 0.0)
-            {
-                if (dist < searchRadius) {
-                    if (neighborCount < maxNeighborsPerParticle) {
-                        neighborList[neighborListStart + neighborCount] = particlesOrderedByBin[j];
+
+            if (neighborCount < maxNeighborsPerParticle) {
+                if (dist > 0.0) {
+                    if (dist < (searchRadius * 2.0)) {
+                        neighborList[neighborListStart + neighborCount] = nIndex;
                         neighborCount++;
                     }
                 }

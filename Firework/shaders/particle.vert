@@ -14,10 +14,6 @@ layout(std430, binding = 1) buffer Velocities {
     vec4 velocity[];
 };
 
-layout(std430, binding = 6) writeonly buffer DensitySSBO {
-    float densities[];
-};
-
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;

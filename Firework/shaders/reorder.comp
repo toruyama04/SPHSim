@@ -2,7 +2,7 @@
 
 layout(local_size_x = 256) in;
 
-layout(std430, binding = 0) buffer particlePositionsSSBO {
+layout(std430, binding = 0) buffer PositionsSSBO {
     vec4 particlePositions[];
 };
 
@@ -25,15 +25,12 @@ layout(std430, binding = 11) buffer prefixS {
 uniform uint particleNum;
 
 void main() {
-    uint id = gl_GlobalInvocationID.x;
-    if (id >= particleNum) return;
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= particleNum) return;
 
-    // Read the bin index for this particle
-    uint binIndex = binIndexForParticle[id];
+    uint binIndex = binIndexForParticle[idx];
 
-    // Use atomic add to get a unique position within the reordered buffer for this bin
     uint posInOrderedArray = atomicAdd(prefixCounter[binIndex], 1);
 
-    // Reorder particle into the correct position
-    particlesOrderedByBin[prefixSum[binIndex] + posInOrderedArray] = id;
+    particlesOrderedByBin[prefixSum[binIndex] + posInOrderedArray] = idx;
 }

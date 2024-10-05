@@ -55,9 +55,10 @@ private:
 	std::unique_ptr<PointHashGridSearcher3> _neighbour_grids;
 
 	GLuint VBO, VAO, EBO;
-	GLuint positionsSSBO, velocitiesSSBO, aliveFlagSSBO, forcesSSBO, densitiesSSBO, pressureSSBO, testSSBO;
+	GLuint positionsSSBO, velocitiesSSBO, aliveFlagSSBO, forcesSSBO, densitiesSSBO, pressureSSBO;
 	GLuint atomicCounterBuffer;
 	GLuint drawIndirectBuffer;
+	// GLuint testSSBO;
 	// GLuint particleTexture;
 	DrawElementsIndirectCommand cmd;
 };

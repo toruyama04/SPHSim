@@ -23,7 +23,7 @@ private:
 	GLuint endIndexNeighbourSSBO;
 
 	std::unique_ptr<Shader> countShader;
-	std::unique_ptr<Shader> pass1, pass2, pass3;
+	// std::unique_ptr<Shader> pass1, pass2, pass3;
 	std::unique_ptr<Shader> reorderShader;
 	std::unique_ptr<Shader> generateNeighbourListShader;
 

@@ -19,11 +19,13 @@ PointHashGridSearcher3::PointHashGridSearcher3(GLuint resolutionX, GLuint resolu
     std::vector<GLuint> initialBinValue(binCount, 0);
     std::vector<GLuint> initialParticleValue(particleNum, 0);
     std::vector<GLuint> initialN(particleNum * maxneighbourNum, 0);
+    std::vector<GLuint> initialPrefix(binCount + 1, 0);
+    initialPrefix[binCount] = particleNum;
 
     // Initialize buffers with data
     glNamedBufferData(particleNumPerBinSSBO, sizeof(GLuint) * binCount, initialBinValue.data(), GL_DYNAMIC_DRAW);
     glNamedBufferData(binIndexForParticleSSBO, sizeof(GLuint) * particleNum, nullptr, GL_DYNAMIC_DRAW);
-    glNamedBufferData(prefixForBinReorderSSBO, sizeof(GLuint) * binCount, initialBinValue.data(), GL_DYNAMIC_DRAW);
+    glNamedBufferData(prefixForBinReorderSSBO, sizeof(GLuint) * (binCount + 1), initialBinValue.data(), GL_DYNAMIC_DRAW);
     glNamedBufferData(particlesOrderedByBinSSBO, sizeof(GLuint) * particleNum, nullptr, GL_DYNAMIC_DRAW);
 
     std::vector<GLuint> flatNeighbors(resolutionX * resolutionY * resolutionZ * 27, 111111);
@@ -94,15 +96,15 @@ void PointHashGridSearcher3::build(GLuint particleNum, float searchRadius) {
     glGetNamedBufferSubData(particleNumPerBinSSBO, 0, binCount * sizeof(GLuint), particleNumPerBin.data());
 
     // Compute prefix sum on CPU
-    std::vector<GLuint> prefixSum(binCount, 0);
+    std::vector<GLuint> prefixSum(binCount + 1, 0);
     GLuint sum = 0;
     for (GLuint i = 0; i < binCount; ++i) {
         prefixSum[i] = sum;
         sum += particleNumPerBin[i];
     }
-
+    prefixSum[binCount] = particleNum;
     // Write prefix sum back to GPU
-    glNamedBufferSubData(prefixForBinReorderSSBO, 0, binCount * sizeof(GLuint), prefixSum.data());
+    glNamedBufferSubData(prefixForBinReorderSSBO, 0, (binCount + 1) * sizeof(GLuint), prefixSum.data());
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     /*pass1->use();

@@ -42,11 +42,16 @@ Firework::~Firework()
 {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
     glDeleteBuffers(1, &positionsSSBO);
     glDeleteBuffers(1, &velocitiesSSBO);
     glDeleteBuffers(1, &aliveFlagSSBO);
     glDeleteBuffers(1, &atomicCounterBuffer);
     glDeleteBuffers(1, &drawIndirectBuffer);
+    glDeleteBuffers(1, &forcesSSBO);
+    glDeleteBuffers(1, &densitiesSSBO);
+    glDeleteBuffers(1, &pressureSSBO);
+    // glDeleteBuffers(1, &testSSBO);
 }
 
 void Firework::initShaders()
@@ -74,7 +79,8 @@ void Firework::initBuffers()
     glGenBuffers(1, &densitiesSSBO);
     glGenBuffers(1, &pressureSSBO);
 	glGenBuffers(1, &drawIndirectBuffer);
-    glGenBuffers(1, &testSSBO);
+    // glGenBuffers(1, &testSSBO);
+    glGenBuffers(1, &atomicCounterBuffer);
 
 	glBindVertexArray(VAO);
 
@@ -110,7 +116,6 @@ void Firework::initBuffers()
 
     // aliveCount
 	// 0
-    glGenBuffers(1, &atomicCounterBuffer);
     glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
     GLuint initial = 0;
     glBufferData(GL_ATOMIC_COUNTER_BUFFER, sizeof(GLuint), &initial, GL_DYNAMIC_DRAW);
@@ -119,7 +124,6 @@ void Firework::initBuffers()
 
     // initialising positions SSBO with default values: W component for current_lifetime
     // 0
-    glGenBuffers(1, &positionsSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, positionsSSBO);
     std::vector default_values(_max_particles, glm::vec4(-1.0f, -1.0f, -1.0f, -1.0f));
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * _max_particles, default_values.data(), GL_DYNAMIC_DRAW);
@@ -132,11 +136,10 @@ void Firework::initBuffers()
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * _max_particles, default_velocity.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, velocitiesSSBO);
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, testSSBO);
+    /*glBindBuffer(GL_SHADER_STORAGE_BUFFER, testSSBO);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * _max_particles, default_velocity.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, testSSBO);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, testSSBO);*/
 
-    // initialising alive flag SSBO with default values
     // 4
     std::vector<int> flag_default(_max_particles, 0);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, aliveFlagSSBO);
@@ -149,10 +152,9 @@ void Firework::initBuffers()
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, forcesSSBO);
 
     // 6
-    std::vector<float> defaultDensity(_max_particles, 1000.0f);
     std::vector<float> defaultFloat(_max_particles, 0.0f);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, densitiesSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * _max_particles, defaultDensity.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * _max_particles, nullptr, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, densitiesSSBO);
 
     // 7
@@ -340,7 +342,7 @@ void Firework::resetAliveCount(GLuint amount)
 
 float randomFloat(float min, float max) {
     static std::default_random_engine e;
-    static std::uniform_real_distribution<> dis(min, max); // range [min, max]
+    static std::uniform_real_distribution<float> dis(min, max); // range [min, max]
     return dis(e);
 }
 

@@ -68,7 +68,7 @@ void main()
 
         vec3 d = x_i - positions[ni].xyz;
         
-        pressureVal = mass * ((pressures[idx] / (d_i * d_i)) + (pressures[ni] / pow(densities[ni], 2.0)) * grad_kernel(d);
+        pressureVal = mass * (pressures[idx] / (d_i * d_i)) + (pressures[ni] / pow(densities[ni], 2.0)) * grad_kernel(d);
     }
     forces[idx].xyz = ((-1 * mass) / d_i) * (d_i * pressureVal);
 }
