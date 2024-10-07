@@ -31,6 +31,7 @@ uniform uint particleNum;
 uniform float h;
 uniform uint maxNeighbourNum;
 uniform float cubicSpline;
+uniform float spikyLap;
 uniform float mass;
 
 vec3 grad_kernel(vec3 x_ij)
@@ -76,13 +77,17 @@ void main()
         vec3 v_j = velocity[nI].xyz;
         float d_j = densities[nI];
 
-        vec3 x_ij = x_i - x_j;
-        vec3 grad_Wij = grad_kernel(x_ij);
+        float dist = distance(x_i, x_j);
+        // vec3 grad_Wij = grad_kernel(x_ij);
 
-        float x_dot_gradW = dot(x_ij, grad_Wij);
-        float x_dot_x = dot(x_ij, x_ij);
-        vec3 a_ij = v_i - v_j;
-        viscosityForce += (mass / d_j) * a_ij * (x_dot_gradW / (x_dot_x + 0.01 * h * h));
+        // float x_dot_gradW = dot(x_ij, grad_Wij);
+        // float x_dot_x = dot(x_ij, x_ij);
+        // vec3 a_ij = v_i - v_j;
+        // viscosityForce += (mass / d_j) * a_ij * (x_dot_gradW / (x_dot_x + 0.01 * h * h));
+
+        vec3 v_diff = v_j - v_i;
+        viscosityForce += viscosityCoefficient * mass * (v_diff / d_j) * spikyLap * (h - dist);
     }
-    forces[idx].xyz += mass * viscosityCoefficient * (viscosityForce * 2.0);
+    // forces[idx].xyz += mass * viscosityCoefficient * (viscosityForce * 2.0);
+    forces[idx].xyz += viscosityForce;
 }

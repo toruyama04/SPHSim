@@ -18,7 +18,7 @@ int main() {
     Firework* myFirework = new Firework;
 
     // myFirework->addFirework(fireworkPos[0]);
-    myFirework->addParticleCube(glm::vec3(4.0, 5.0, 4.5), 0.6f, 10);
+    myFirework->addParticleCube(glm::vec3(2.0f, 3.0f, 1.0f), 0.6f, 15);
     myApp->addFirework(myFirework);
     myApp->run();
 

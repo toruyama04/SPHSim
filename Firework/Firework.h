@@ -39,7 +39,7 @@ private:
 
 	// particleSystemData
 	float _radius = 1.0f;
-	float _mass = 1000.0;
+	float _mass = 1.0f;
 	GLuint maxNeighbourNum = 100;
 	float _targetDensity = 1000.0f;
 
@@ -58,7 +58,7 @@ private:
 	GLuint positionsSSBO, velocitiesSSBO, aliveFlagSSBO, forcesSSBO, densitiesSSBO, pressureSSBO;
 	GLuint atomicCounterBuffer;
 	GLuint drawIndirectBuffer;
-	// GLuint testSSBO;
+	GLuint testSSBO;
 	// GLuint particleTexture;
 	DrawElementsIndirectCommand cmd;
 };

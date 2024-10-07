@@ -26,10 +26,15 @@ layout(std430, binding = 6) buffer DensitySSBO {
     float densities[];
 };
 
+layout(std430, binding = 2) buffer Test { 
+    vec4 test[];
+};
+
 uniform float h;
 uniform uint particleNum;
 uniform uint maxNeighbourNum;
 uniform float cubicSpline;
+uniform float spikyGrad;
 uniform float mass;
 
 vec3 grad_kernel(vec3 x_ij)
@@ -65,10 +70,15 @@ void main()
     for (uint i = startIndex; i < endI; ++i)
     {
         uint ni = neighbourList[i];
-
-        vec3 d = x_i - positions[ni].xyz;
+        vec3 x_j = positions[ni].xyz;
+        float dist = distance(x_i, x_j);
+        vec3 dir = normalize(x_j - x_i);
         
-        pressureVal = mass * (pressures[idx] / (d_i * d_i)) + (pressures[ni] / pow(densities[ni], 2.0)) * grad_kernel(d);
+        // pressureVal = mass * ((pressures[idx] / (d_i * d_i)) + (pressures[ni] / pow(densities[ni], 2.0))) * grad_kernel(d);
+        pressureVal = - dir * mass * (pressures[idx] + pressures[ni]) / (2 * densities[ni]) * spikyGrad;
+        pressureVal *= pow(h - dist, 2.0);
+        forces[idx].xyz += pressureVal;
     }
-    forces[idx].xyz = ((-1.0 * mass) / d_i) * (d_i * pressureVal);
+    // forces[idx].xyz = ((-1.0 * mass) / d_i) * (d_i * pressureVal);
+
 }
