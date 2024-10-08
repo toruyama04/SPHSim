@@ -99,7 +99,7 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
     last_x = static_cast<double>(screen_width) / 2.0f;
     last_y = static_cast<double>(screen_height) / 2.0f;
 
-    camera = new Camera(glm::vec3(5.0f, 6.0f, 20.0f));
+    camera = new Camera(glm::vec3(5.0f, 4.0f, 25.0f));
     if (camera == nullptr) {
         std::cerr << "Failed to create camera\n";
         glfwDestroyWindow(window);

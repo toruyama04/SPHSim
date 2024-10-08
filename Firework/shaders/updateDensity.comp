@@ -10,10 +10,6 @@ layout(std430, binding = 6) buffer DensitySSBO {
     float densities[];
 };
 
-layout(std430, binding = 1) buffer Velocities {
-    vec4 velocity[];
-};
-
 layout(std430, binding = 14) buffer NeighbourListSSBO {
     uint neighbourList[];
 };
@@ -27,41 +23,8 @@ uniform float h2;
 uniform float mass;
 uniform uint particleNum;
 uniform uint maxNeighbourNum;
-uniform float cubicSpline;
 uniform float poly6mass;
-uniform float selfDens;
-uniform float dt;
 uniform float p0;
-
-float kernel(float d) {
-    float q = d / h;
-    float res = 0.0;
-    if (q > 0.0 && q < 1.0) {
-        res = 1.0 - ((3.0 / 2.0) * q * q) + ((3.0 / 4.0) * q * q * q);
-    } else if (q >= 1.0 && q < 2.0) {
-        res = (1.0 / 4.0) * (pow((2.0 - q), 3.0));
-    } 
-    return cubicSpline * res;
-}
-
-vec3 grad_kernel(vec3 x_ij) {
-    float d = length(x_ij);
-    if (d == 0) return vec3(0.0);
-
-    vec3 x_ij_normalised = x_ij / d;
-    
-    float grad_w = 0.0;
-    float q = d / h;
-
-    if (q > 0.0 && q < 1.0) {
-        grad_w = -3.0 * q + ((9.0 / 4.0) * q * q);
-        return cubicSpline * grad_w * x_ij_normalised;
-    } else if (q >= 1.0 && q < 2.0) {
-        grad_w = -((3.0 / 4.0) * pow((2 - q), 2.0));
-        return cubicSpline * grad_w * x_ij_normalised;
-    }
-    return vec3(0.0);
-}
 
 
 void main()
@@ -72,11 +35,9 @@ void main()
     uint startIndex = idx * maxNeighbourNum;
     uint endI = endIndex[idx];
 
-    float densitySum = selfDens;
-    // float densitySum2 = 0.0;
+    float densitySum = 0.0;
 
     vec3 x_i = positions[idx].xyz;
-    vec3 v_i = velocity[idx].xyz;
 
     // going through each neighbour
     for (uint i = startIndex; i < endI; ++i)
@@ -90,14 +51,6 @@ void main()
             float w = poly6mass * pow(h2 - dist2, 3.0);
             densitySum += w;
         }
-
-        // vec3 v_j = velocity[ni].xyz;
-        // vec3 dir = x_i - x_j;
-
-        // densitySum += (mass * kernel(dist));
-        // vec3 v_ij = v_i - v_j;
-        // densitySum2 += dot(v_ij, grad_kernel(dir));
     }
-    // densities[idx] = densitySum + (dt * densitySum2);
     densities[idx] = max(p0, densitySum);
 }

@@ -33,26 +33,9 @@ layout(std430, binding = 2) buffer Test {
 uniform float h;
 uniform uint particleNum;
 uniform uint maxNeighbourNum;
-uniform float cubicSpline;
 uniform float spikyGrad;
 uniform float mass;
 
-vec3 grad_kernel(vec3 x_ij)
-{
-    float d = length(x_ij);
-    vec3 x_ij_normalised = normalize(x_ij);
-    
-    float grad_w = 0.0;
-    float q = d / h;
-    if (q > 0.0 && q < 1.0) {
-        grad_w = -2.0 + (3.0 * q);
-        return (3.0 * cubicSpline) * grad_w * x_ij_normalised;
-    } else if (q >= 1.0 && q < 2.0) {
-        grad_w = 2.0 - q;
-        return (cubicSpline) * grad_w * x_ij_normalised;
-    }
-    return vec3(0.0);
-}
 
 void main()
 {
@@ -76,7 +59,7 @@ void main()
         float r2 = dot(diff, diff);
         float r = sqrt(r2);
         
-        if (r > 0 && r < h)
+        if (r > 0.0 && r < h)
         {
             float d_j = densities[ni];
             float p_j = pressures[ni];
@@ -84,9 +67,7 @@ void main()
             float w = spikyGrad * pow(h - r, 2.0);
             pressureVal += ((p_i + p_j) / (2 * d_i * d_j)) * w * rnorm;
         }
-        // pressureVal = mass * ((pressures[idx] / (d_i * d_i)) + (pressures[ni] / pow(densities[ni], 2.0))) * grad_kernel(d);
     }
-    // forces[idx].xyz = ((-1.0 * mass) / d_i) * (d_i * pressureVal);
     pressureVal *= -1;
     forces[idx].xyz += pressureVal / d_i;
 }

@@ -30,30 +30,8 @@ uniform float viscosityCoefficient;
 uniform uint particleNum;
 uniform float h;
 uniform uint maxNeighbourNum;
-uniform float cubicSpline;
-uniform float spikyLap;
 uniform float mass;
 uniform float e;
-
-vec3 grad_kernel(vec3 x_ij)
-{
-    float d = length(x_ij);
-    if (d == 0) return vec3(0.0);
-
-    vec3 x_ij_normalised = x_ij / d;
-    
-    float grad_w = 0.0;
-    float q = d / h;
-
-    if (q > 0.0 && q < 1.0) {
-        grad_w = -3.0 * q + ((9.0 / 4.0) * q * q);
-        return cubicSpline * grad_w * x_ij_normalised;
-    } else if (q >= 1.0 && q < 2.0) {
-        grad_w = -((3.0 / 4.0) * pow((2 - q), 2.0));
-        return cubicSpline * grad_w * x_ij_normalised;
-    }
-    return vec3(0.0);
-}
 
 
 void main()

@@ -214,13 +214,12 @@ void Firework::update(float delta_time)
     float poly6mass = poly6 * _mass;
     densityUpdate->use();
     densityUpdate->setFloat("h", this->_radius);
+    densityUpdate->setFloat("h2", _radius * _radius);
     densityUpdate->setFloat("mass", _mass);
     densityUpdate->setUInt("particleNum", count);
     densityUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
-    densityUpdate->setFloat("cubicSpline", cubicSpline);
     densityUpdate->setFloat("poly6mass", poly6mass);
-    densityUpdate->setFloat("dt", delta_time);
-    densityUpdate->setFloat("selfDens", _mass * poly6 * std::pow(_radius, 6.0f));
+    densityUpdate->setFloat("p0", _targetDensity);
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
 
@@ -228,14 +227,12 @@ void Firework::update(float delta_time)
     pressureCompute->use();
     pressureCompute->setFloat("targetDensity", _targetDensity);
     pressureCompute->setFloat("k", 100.0f);
-    pressureCompute->setFloat("negativePressureScale", 0.0);
     pressureCompute->setUInt("particleNum", count);
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     // use Eq 6
     pressureUpdate->use();
-    pressureUpdate->setFloat("cubicSpline", cubicSpline);
     pressureUpdate->setFloat("h", _radius);
     pressureUpdate->setUInt("particleNum", count);
     pressureUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
@@ -245,18 +242,17 @@ void Firework::update(float delta_time)
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     viscosityUpdate->use();
-    viscosityUpdate->setFloat("cubicSpline", cubicSpline);
-    viscosityUpdate->setFloat("viscosityCoefficient", 1.0f);
+    viscosityUpdate->setFloat("viscosityCoefficient", 45.0f / (3.14159265359f * std::pow(_radius, 6.0f)));
     viscosityUpdate->setFloat("h", _radius);
     viscosityUpdate->setUInt("particleNum", count);
     viscosityUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
-    viscosityUpdate->setFloat("spikyLap", 45.0f / (3.14159265359f * std::pow(_radius, 6.0f)));
     viscosityUpdate->setFloat("mass", _mass);
+    viscosityUpdate->setFloat("e", 0.018f);
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     timeIntegrations->use();
-    timeIntegrations->setFloat("mass", _mass);
+    timeIntegrations->setVec3("grav", glm::vec3(0.0f, -9.8f, 0.0f));
     timeIntegrations->setFloat("dt", delta_time);
     timeIntegrations->setUInt("particleNum", count);
     timeIntegrations->setVec3("boundaryMin", glm::vec3(0.0, 0.0, 0.0));
