@@ -23,9 +23,7 @@ void main()
     float dens = densities[idx];
     // float p = k * (pow((dens / targetDensity), 7.0) - 1.0);
     float p = k * (dens - targetDensity);
-    if (p < 0.0) 
-    {
-        p *= negativePressureScale;
-    }
+    //if (p < 0.0) 
+        //p *= negativePressureScale;
     pressures[idx] = p;
 }

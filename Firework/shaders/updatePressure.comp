@@ -64,6 +64,7 @@ void main()
 
     vec3 x_i = positions[idx].xyz;
     float d_i = densities[idx];
+    float p_i = pressures[idx];
 
     vec3 pressureVal = vec3(0.0);
 
@@ -71,14 +72,21 @@ void main()
     {
         uint ni = neighbourList[i];
         vec3 x_j = positions[ni].xyz;
-        float dist = distance(x_i, x_j);
-        vec3 dir = normalize(x_j - x_i);
+        vec3 diff = x_i - x_j;
+        float r2 = dot(diff, diff);
+        float r = sqrt(r2);
         
+        if (r > 0 && r < h)
+        {
+            float d_j = densities[ni];
+            float p_j = pressures[ni];
+            vec3 rnorm = diff / r;
+            float w = spikyGrad * pow(h - r, 2.0);
+            pressureVal += ((p_i + p_j) / (2 * d_i * d_j)) * w * rnorm;
+        }
         // pressureVal = mass * ((pressures[idx] / (d_i * d_i)) + (pressures[ni] / pow(densities[ni], 2.0))) * grad_kernel(d);
-        pressureVal = - dir * mass * (pressures[idx] + pressures[ni]) / (2 * densities[ni]) * spikyGrad;
-        pressureVal *= pow(h - dist, 2.0);
-        forces[idx].xyz += pressureVal;
     }
     // forces[idx].xyz = ((-1.0 * mass) / d_i) * (d_i * pressureVal);
-
+    pressureVal *= -1;
+    forces[idx].xyz += pressureVal / d_i;
 }

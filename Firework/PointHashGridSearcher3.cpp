@@ -86,7 +86,7 @@ void PointHashGridSearcher3::build(GLuint particleNum, float searchRadius) {
     countShader->use();
     countShader->setVec3("gridResolution", resolutionVec);
     countShader->setVec3("gridOrigin", glm::vec3(0.0));
-    countShader->setFloat("gridSpacing", 2 * searchRadius);
+    countShader->setFloat("gridSpacing", 1.0f);
     countShader->setUInt("particleNum", particleNum);
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);

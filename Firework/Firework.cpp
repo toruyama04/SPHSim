@@ -200,27 +200,17 @@ void Firework::update(float delta_time)
     // calculate non-pressure forces to find intermediate velocity v*
     // use Eq 8
     float cubicSpline = 1 / (3.14159265359f * std::pow(_radius, 3.0f));
-	viscosityUpdate->use();
-	viscosityUpdate->setFloat("cubicSpline", cubicSpline);
-	viscosityUpdate->setFloat("viscosityCoefficient", 1.0f);
-	viscosityUpdate->setFloat("h", _radius);
-	viscosityUpdate->setUInt("particleNum", count);
-	viscosityUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
-    viscosityUpdate->setFloat("spikyLap", 45.0f / (3.14159265359f * std::pow(_radius, 6.0f)));
-	viscosityUpdate->setFloat("mass", _mass);
-	glDispatchCompute(groupNum, 1, 1);
-	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-    velocityIntermediate->use();
+    /*velocityIntermediate->use();
     velocityIntermediate->setFloat("dt", delta_time);
     velocityIntermediate->setFloat("mass", _mass);
     velocityIntermediate->setUInt("particleNum", count);
     glDispatchCompute(groupNum, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);*/
 
     // calculate new density using intermediate velocity v*
     // use Eq in Algo 2
-    float poly6 = 315.0f / (64.0f * 3.14159265359f * (std::pow(_radius, 9.0f)));
+    float poly6 = 315.0f / (64.0f * 3.14159265359f * std::pow(_radius, 9.0f));
     float poly6mass = poly6 * _mass;
     densityUpdate->use();
     densityUpdate->setFloat("h", this->_radius);
@@ -230,13 +220,14 @@ void Firework::update(float delta_time)
     densityUpdate->setFloat("cubicSpline", cubicSpline);
     densityUpdate->setFloat("poly6mass", poly6mass);
     densityUpdate->setFloat("dt", delta_time);
+    densityUpdate->setFloat("selfDens", _mass * poly6 * std::pow(_radius, 6.0f));
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
 
     // use Eq 9
     pressureCompute->use();
     pressureCompute->setFloat("targetDensity", _targetDensity);
-    pressureCompute->setFloat("k", 1.0f);
+    pressureCompute->setFloat("k", 100.0f);
     pressureCompute->setFloat("negativePressureScale", 0.0);
     pressureCompute->setUInt("particleNum", count);
     glDispatchCompute(groupNum, 1, 1);
@@ -250,6 +241,17 @@ void Firework::update(float delta_time)
     pressureUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
     pressureUpdate->setFloat("spikyGrad", -45.0f / (3.14159265359f * std::pow(_radius, 6.0f)));
     pressureUpdate->setFloat("mass", _mass);
+    glDispatchCompute(groupNum, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+    viscosityUpdate->use();
+    viscosityUpdate->setFloat("cubicSpline", cubicSpline);
+    viscosityUpdate->setFloat("viscosityCoefficient", 1.0f);
+    viscosityUpdate->setFloat("h", _radius);
+    viscosityUpdate->setUInt("particleNum", count);
+    viscosityUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
+    viscosityUpdate->setFloat("spikyLap", 45.0f / (3.14159265359f * std::pow(_radius, 6.0f)));
+    viscosityUpdate->setFloat("mass", _mass);
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
@@ -354,7 +356,7 @@ void Firework::addParticleCube(const glm::vec3& origin, float spacing, int parti
 {
     GLuint aliveIndex = getAliveCount();
     int particleCount = particlesPerSide * particlesPerSide * particlesPerSide;
-    _neighbour_grids = std::make_unique<PointHashGridSearcher3>(5, 5, 5, particleCount, maxNeighbourNum);
+    _neighbour_grids = std::make_unique<PointHashGridSearcher3>(10, 10, 10, particleCount, maxNeighbourNum);
 
     if (aliveIndex + particleCount < _max_particles)
     {

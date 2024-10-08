@@ -23,6 +23,7 @@ uniform float dt;
 uniform uint particleNum;
 uniform vec3 boundaryMin;
 uniform vec3 boundaryMax;
+uniform vec3 grav;
 
 void main()
 {
@@ -34,9 +35,10 @@ void main()
     vec3 force = forces[idx].xyz;
     float dens = densities[idx];
     
-    vec3 acceleration = force / dens;
-    vel += acceleration * dt;
-    pos += dt * vel;
+    force += grav;
+    vel += force * dt;
+    pos += vel * dt;
+
 
     if (pos.x < boundaryMin.x) {
         pos.x = boundaryMin.x;
@@ -65,4 +67,5 @@ void main()
 
     positions[idx].xyz = pos;
     velocities[idx].xyz = vel;
+    forces[idx].xyz = vec3(0.0);
 }

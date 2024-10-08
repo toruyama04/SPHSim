@@ -41,7 +41,7 @@ private:
 	float _radius = 1.0f;
 	float _mass = 1.0f;
 	GLuint maxNeighbourNum = 100;
-	float _targetDensity = 1000.0f;
+	float _targetDensity = 2.0f;
 
 	std::unique_ptr<Shader> particleShader;
 	std::unique_ptr<Shader> densityUpdate;
