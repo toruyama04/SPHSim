@@ -52,5 +52,6 @@ void main()
             densitySum += w;
         }
     }
-    densities[idx] = max(p0, densitySum);
+    // densities[idx] = max(p0, densitySum);
+    densities[idx] = densitySum;
 }

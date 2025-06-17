@@ -6,7 +6,7 @@
 
 #include "PointHashGridSearcher3.h"
 
-class Firework
+class Sim
 {
 public:
 	struct DrawElementsIndirectCommand
@@ -18,13 +18,13 @@ public:
 		GLuint baseInstance;
 	};
 
-	Firework();
-	~Firework();
+	Sim();
+	~Sim();
 
 	void render(const glm::mat4& view, const glm::mat4& projection);
 	void update(float delta_time);
 
-	//void addFirework(const glm::vec3& origin);
+	void addSim(const glm::vec3& origin, const GLuint particle_num);
 	void addParticleCube(const glm::vec3& origin, float spacing, int particlesPerSide);
 
 	GLuint getAliveCount();
@@ -35,12 +35,12 @@ private:
 	void initShaders();
 
 	unsigned int _max_particles;
-	float firework_lifetime;
+	float sim_lifetime;
 
 	// particleSystemData
 	float _radius = 1.0f;
-	float _mass = 1.0f;
-	GLuint maxNeighbourNum = 100;
+	float _mass;
+	GLuint maxNeighbourNum = 150;
 	float _targetDensity = 2.0f;
 
 	std::unique_ptr<Shader> particleShader;

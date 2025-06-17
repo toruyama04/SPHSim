@@ -32,9 +32,9 @@ void main()
     float gridPosy = floor(gridPos.y);
     float gridPosz = floor(gridPos.z);
 
-    if (gridPosx >= 0 && gridPosx < gridResolution.x &&
-        gridPosy >= 0 && gridPosy < gridResolution.y &&
-        gridPosz >= 0 && gridPosz < gridResolution.z) {
+    if (gridPosx >= 0.0 && gridPosx < gridResolution.x &&
+        gridPosy >= 0.0 && gridPosy < gridResolution.y &&
+        gridPosz >= 0.0 && gridPosz < gridResolution.z) {
 
         uint binIndex = uint(gridPosx + (gridPosy * gridResolution.x) + (gridPosz * gridResolution.x * gridResolution.y));
 

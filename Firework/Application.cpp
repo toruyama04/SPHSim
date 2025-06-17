@@ -96,6 +96,7 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
     lastFrame = 0.0f;
     this->screen_height = screen_height;
     this->screen_width = screen_width;
+    accumulator = 0.0f;
     last_x = static_cast<double>(screen_width) / 2.0f;
     last_y = static_cast<double>(screen_height) / 2.0f;
 
@@ -133,28 +134,28 @@ void Application::run()
         accumulator += frameTime;
 
         processInput();
-        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+        glClearColor(0.75f, 0.75f, 0.75f, 1.0f);
 
         while (accumulator >= fixedTimeStep)
         {
-            firework->update(fixedTimeStep);
+            sim->update(fixedTimeStep);
             accumulator -= fixedTimeStep;
         }
 
         glm::mat4 view = camera->GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(camera->Zoom), static_cast<float>(screen_width) / static_cast<float>(screen_height), 0.1f, 100.0f);
 
-        firework->render(view, projection);
+        sim->render(view, projection);
 
         displayFPS();
         glfwSwapBuffers(window);
 	}
 }
 
-void Application::addFirework(Firework* firework_in)
+void Application::addSim(Sim* firework_in)
 {
-    this->firework = firework_in;
-    if (firework == nullptr)
+    this->sim = firework_in;
+    if (sim == nullptr)
     {
         std::cerr << "Firework add unsuccessful\n";
     }

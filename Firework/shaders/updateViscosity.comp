@@ -32,6 +32,7 @@ uniform float h;
 uniform uint maxNeighbourNum;
 uniform float mass;
 uniform float e;
+uniform vec3 grav;
 
 
 void main()
@@ -70,4 +71,5 @@ void main()
     }
     viscosityForce *= e;
     forces[idx].xyz += viscosityForce / d_i;
+    forces[idx].xyz += grav;
 }

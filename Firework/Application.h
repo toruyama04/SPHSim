@@ -3,7 +3,7 @@
 #include <GLFW/glfw3.h>
 
 #include "camera.h"
-#include "Firework.h"
+#include "SPHSim.h"
 
 
 class Application
@@ -16,7 +16,7 @@ public:
 	void run();
 
 	void displayFPS();
-	void addFirework(Firework* firework_in);
+	void addSim(Sim* firework_in);
 
 	void handleFramebufferSize(int width, int height);
 	void mouseMove(double xpos, double ypos);
@@ -24,7 +24,7 @@ public:
 
 
 private:
-	Firework* firework = nullptr;
+	Sim* sim = nullptr;
 	float fixedTimeStep = 0.03f;
 	float lastFrame;
 	float accumulator;

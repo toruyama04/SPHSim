@@ -19,7 +19,7 @@ void main()
     uint idx = gl_GlobalInvocationID.x;
 
     if (idx >= particleNum) return;
-    vec3 gravforce = vec3(0.0, -25.0, 0.0);
-    velocity[idx].xyz += dt * ((forces[idx].xyz + gravforce) / mass);
-    forces[idx].xyz = vec3(0.0);
+
+    velocity[idx].xyz += dt * ((forces[idx].xyz) / mass);
+    forces[idx] = vec4(0.0);
 }

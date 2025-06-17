@@ -72,9 +72,9 @@ PointHashGridSearcher3::PointHashGridSearcher3(GLuint resolutionX, GLuint resolu
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 15, prefixIndexCounter);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 16, endIndexNeighbourSSBO);
 
-    countShader = std::make_unique<Shader>("shaders/count.comp");
-    reorderShader = std::make_unique<Shader>("shaders/reorder.comp");
-    generateNeighbourListShader = std::make_unique<Shader>("shaders/buildNeighbourList.comp");
+    countShader = std::make_unique<Shader>("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/count.comp");
+    reorderShader = std::make_unique<Shader>("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/reorder.comp");
+    generateNeighbourListShader = std::make_unique<Shader>("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/buildNeighbourList.comp");
     /*pass1 = std::make_unique<Shader>("shaders/pass1prefix.comp");
     pass2 = std::make_unique<Shader>("shaders/pass2prefix.comp");
     pass3 = std::make_unique<Shader>("shaders/pass3prefix.comp");*/

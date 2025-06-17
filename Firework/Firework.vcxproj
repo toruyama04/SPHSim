@@ -24,6 +24,7 @@
     <ProjectGuid>{42f0ec6e-c1c2-4913-8bcb-88e313c09b72}</ProjectGuid>
     <RootNamespace>Firework</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>SPHSim</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -145,7 +146,7 @@
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Firework.cpp" />
+    <ClCompile Include="SPHSim.cpp" />
     <ClCompile Include="PointHashGridSearcher3.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="stb_image.cpp" />
@@ -153,7 +154,7 @@
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="camera.h" />
-    <ClInclude Include="Firework.h" />
+    <ClInclude Include="SPHSim.h" />
     <ClInclude Include="PointHashGridSearcher3.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="stb_image.h" />
