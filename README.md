@@ -1,3 +1,3 @@
 # Firework
 
-item1 Theory
+1. Theory
