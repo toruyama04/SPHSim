@@ -1,6 +1,6 @@
 # SPH Sim
 
-based on: https://sph-tutorial.physics-simulation.org/pdf/SPH_Tutorial.pdf#cite.IABT11
+based on: https://sph-tutorial.physics-simulation.org/pdf/SPH_Tutorial.pdf
  
 ## SPH discretisation
 We must be able to discretise spatial field quantities and spatial differential operators. Conceptually, we can say the exact value of a continuous field at any point in space can be computed by using the Dirac delta δ. So given a function $A$, our continuous field, and our Dirac delta distribution, by finding the convolution between them, we express the field value at location $\mathbf{x}$ as: $$A(x) = (A * \delta)(x) = \int A(\mathbf{x}')\delta (\mathbf{x} - \mathbf{x}') d\mathbf{x}'$$
