@@ -49,11 +49,12 @@ void Application::handleFramebufferSize(int width, int height)
 
 Application::Application(unsigned int screen_width, unsigned int screen_height, const char* title)
 {
+    // Initialisation: setting error/cursor/framebuffersize callback, OpenGL version
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
     {
         std::cerr << "Failed to initialize GLFW\n";
-        std::exit(EXIT_FAILURE); // Exit if GLFW initialization fails
+        std::exit(EXIT_FAILURE);
     }
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -65,7 +66,7 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
     {
         std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
-        std::exit(EXIT_FAILURE); // Exit if window creation fails
+        std::exit(EXIT_FAILURE);
     }
 
     glfwMakeContextCurrent(window);
@@ -78,20 +79,20 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
         std::cerr << "Failed to load OpenGL functions\n";
         glfwDestroyWindow(window);
         glfwTerminate();
-        std::exit(EXIT_FAILURE); // Exit if GLAD initialization fails
+        std::exit(EXIT_FAILURE);
     }
 
-    // needed?
     int frame_width, frame_height;
     glfwGetFramebufferSize(window, &frame_width, &frame_height);
     if (frame_width == 0 || frame_height == 0) {
         std::cerr << "Failed to get framebuffer size\n";
         glfwDestroyWindow(window);
         glfwTerminate();
-        std::exit(EXIT_FAILURE); // Exit if framebuffer size retrieval fails
+        std::exit(EXIT_FAILURE);
     }
     glViewport(0, 0, frame_width, frame_height);
 
+    // Setting instance variables
     first_mouse = true;
     lastFrame = 0.0f;
     this->screen_height = screen_height;
@@ -100,12 +101,13 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
     last_x = static_cast<double>(screen_width) / 2.0f;
     last_y = static_cast<double>(screen_height) / 2.0f;
 
+    // Creating camera (from learnopengl.com)
     camera = new Camera(glm::vec3(5.0f, 4.0f, 25.0f));
     if (camera == nullptr) {
         std::cerr << "Failed to create camera\n";
         glfwDestroyWindow(window);
         glfwTerminate();
-        std::exit(EXIT_FAILURE); // Exit if camera creation fails
+        std::exit(EXIT_FAILURE);
     }
 }
 
@@ -147,21 +149,21 @@ void Application::run()
 
         sim->render(view, projection);
 
-        displayFPS();
+        // displayFPS();
         glfwSwapBuffers(window);
 	}
 }
 
-void Application::addSim(Sim* firework_in)
+void Application::addSim(Sim* sim_in)
 {
-    this->sim = firework_in;
+    this->sim = sim_in;
     if (sim == nullptr)
     {
-        std::cerr << "Firework add unsuccessful\n";
+        std::cerr << "Sim add unsuccessful\n";
     }
 }
 
-void Application::displayFPS() {
+/*void Application::displayFPS() {
     static double previousSeconds = glfwGetTime();
     static int frameCount = 0;
 
@@ -182,7 +184,7 @@ void Application::displayFPS() {
 
     // Increment frame count
     frameCount++;
-}
+}*/
 
 void Application::processInput()
 {

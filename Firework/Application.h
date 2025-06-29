@@ -15,8 +15,8 @@ public:
 
 	void run();
 
-	void displayFPS();
-	void addSim(Sim* firework_in);
+	// void displayFPS();
+	void addSim(Sim* sim_in);
 
 	void handleFramebufferSize(int width, int height);
 	void mouseMove(double xpos, double ypos);

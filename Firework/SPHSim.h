@@ -4,7 +4,7 @@
 
 #include "Shader.h"
 
-#include "PointHashGridSearcher3.h"
+#include "Grid.h"
 
 class Sim
 {
@@ -40,19 +40,20 @@ private:
 	// particleSystemData
 	float _radius = 1.0f;
 	float _mass;
-	GLuint maxNeighbourNum = 150;
+	GLuint particleNum;
+	GLuint maxNeighbourNum = 20;
 	float _targetDensity = 2.0f;
 
-	std::unique_ptr<Shader> particleShader;
-	std::unique_ptr<Shader> densityUpdate;
-	std::unique_ptr<Shader> viscosityUpdate;
-	std::unique_ptr<Shader> pressureCompute;
-	std::unique_ptr<Shader> pressureUpdate;
-	std::unique_ptr<Shader> timeIntegrations;
-	std::unique_ptr<Shader> resetShader;
-	std::unique_ptr<Shader> velocityIntermediate;
+	Shader* particleShader;
+	Shader* densityUpdate;
+	Shader* viscosityUpdate;
+	Shader* pressureCompute;
+	Shader* pressureUpdate;
+	Shader* timeIntegrations;
+	Shader* resetShader;
+	Shader* velocityIntermediate;
 
-	std::unique_ptr<PointHashGridSearcher3> _neighbour_grids;
+	Grid* _neighbour_grids;
 
 	GLuint VBO, VAO, EBO;
 	GLuint positionsSSBO, velocitiesSSBO, aliveFlagSSBO, forcesSSBO, densitiesSSBO, pressureSSBO;

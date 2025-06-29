@@ -9,10 +9,10 @@
 
 int main() {
 
-    Application* myApp = new Application(1920, 1080, "Firework");
+    Application* myApp = new Application(1920, 1080, "SPHSim");
     Sim* mySim = new Sim;
 
-    mySim->addParticleCube(glm::vec3(5.0f, 5.0f, 5.0f), 0.4f, 12);
+    mySim->addParticleCube(glm::vec3(5.0f, 5.0f, 5.0f), 0.2f, 24);
     myApp->addSim(mySim);
     myApp->run();
 

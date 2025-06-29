@@ -28,9 +28,8 @@ unsigned int indices[] = {
 
 Sim::Sim()
 {
-    sim_lifetime = 6.0f;
-    _max_particles = 10000;
-    // _mass = _targetDensity * std::pow(_radius, 3.0f);
+    sim_lifetime = 100.0f;
+    _max_particles = 15000;
 
 	initBuffers();
 	initShaders();
@@ -49,24 +48,34 @@ Sim::~Sim()
     glDeleteBuffers(1, &forcesSSBO);
     glDeleteBuffers(1, &densitiesSSBO);
     glDeleteBuffers(1, &pressureSSBO);
+    delete particleShader;
+    delete densityUpdate;
+    delete viscosityUpdate;
+    delete pressureCompute;
+    delete pressureUpdate;
+    delete timeIntegrations;
+    delete resetShader;
+    delete velocityIntermediate;
+
+    delete _neighbour_grids;
     // glDeleteBuffers(1, &testSSBO);
 }
 
 void Sim::initShaders()
 {
-    particleShader = std::make_unique<Shader>("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/particle.vert", "C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/particle.frag");
-    densityUpdate = std::make_unique<Shader>("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/updateDensity.comp");
-    viscosityUpdate = std::make_unique<Shader>("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/updateViscosity.comp");
-    pressureCompute = std::make_unique<Shader>("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/computePressure.comp");
-    pressureUpdate = std::make_unique<Shader>("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/updatePressure.comp");
-    timeIntegrations = std::make_unique<Shader>("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/timeIntegration.comp");
-    resetShader = std::make_unique<Shader>("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/resetShader.comp");
-    velocityIntermediate = std::make_unique<Shader>("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/updateVelocity.comp");
+    particleShader = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/particle.vert", "C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/particle.frag", nullptr);
+    densityUpdate = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/updateDensity.comp");
+    viscosityUpdate = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/updateViscosity.comp");
+    pressureCompute = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/computePressure.comp");
+    pressureUpdate = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/updatePressure.comp");
+    timeIntegrations = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/timeIntegration.comp");
+    resetShader = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/resetShader.comp");
+    velocityIntermediate = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/updateVelocity.comp");
 }
 
 void Sim::initBuffers()
 {
-    // initialising firework VAO
+    // initialising VAO
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
@@ -186,7 +195,9 @@ void Sim::initBuffers()
 
 void Sim::update(float delta_time)
 {
-    GLuint count = getAliveCount();
+    // GLuint count = getAliveCount();
+    GLuint count = particleNum;
+
     GLuint groupNum = (count + 255) / 256;
     resetShader->use();
     resetShader->setUInt("particleNum", count);
@@ -383,41 +394,33 @@ void Sim::addSim(const glm::vec3& origin, const GLuint particle_num)
         std::cout << "exceeded max particle num\n";
 }
 
-void Sim::addParticleCube(const glm::vec3& origin, float spacing, int particlesPerSide)
+void Sim::addParticleCube(const glm::vec3& center, float spacing, int particlesPerSide)
 {
     GLuint aliveIndex = getAliveCount();
     int particleCount = particlesPerSide * particlesPerSide * particlesPerSide;
-    _neighbour_grids = std::make_unique<PointHashGridSearcher3>(10, 10, 10, particleCount, maxNeighbourNum);
+    _neighbour_grids = new Grid(10, 10, 10, particleCount, maxNeighbourNum);
 
     if (aliveIndex + particleCount < _max_particles)
     {
         std::vector<glm::vec4> positions;
         std::vector<glm::vec4> velocities;
 
-        int side = particlesPerSide;
         int index = 0;
-        float halfSide = (side - 1) * spacing * 0.5f;
-        float offsetMagnitude = spacing * 0.2f; // Random offset scale, 20% of spacing
+        float halfSide = (particlesPerSide - 1) * spacing * 0.5f;
+        float offsetMagnitude = spacing * 0.2f;
 
-        for (int x = 0; x < side; ++x) {
-            for (int y = 0; y < side; ++y) {
-                for (int z = 0; z < side; ++z) {
+        for (int x = 0; x < particlesPerSide; ++x) {
+            for (int y = 0; y < particlesPerSide; ++y) {
+                for (int z = 0; z < particlesPerSide; ++z) {
                     if (index >= particleCount) break;
 
-                    // Base particle position calculated with the origin as the center
-                    glm::vec3 pos = origin + glm::vec3(x * spacing - halfSide, y * spacing - halfSide, z * spacing - halfSide);
-
-                    // Generate small random offset in each direction, scaled by offsetMagnitude
+                    glm::vec3 pos = center + glm::vec3(x * spacing - halfSide, y * spacing - halfSide, z * spacing - halfSide);
                     glm::vec3 randomOffset = glm::vec3(
                         (rand() / (float)RAND_MAX - 0.5f) * offsetMagnitude,
                         (rand() / (float)RAND_MAX - 0.5f) * offsetMagnitude,
                         (rand() / (float)RAND_MAX - 0.5f) * offsetMagnitude
                     );
-
-                    // Add the random offset to the particle position
                     pos += randomOffset;
-
-                    // Direction is calculated from the particle to the origin (center)
                     glm::vec3 dir = glm::vec3(0.0);  // For now, keeping direction zero
 
                     // Store the position and velocity in the buffers
@@ -429,35 +432,24 @@ void Sim::addParticleCube(const glm::vec3& origin, float spacing, int particlesP
             }
         }
 
-        positions.emplace_back(0.0, 5.0, 5.0, sim_lifetime);
-        velocities.emplace_back(0.0, 0.0, 0.0, sim_lifetime);
+        // edges of the grid (10)
+        {
+            positions.emplace_back(0.0, 5.0, 5.0, sim_lifetime);
+            positions.emplace_back(0.0, 0.0, 0.0, sim_lifetime);
+            positions.emplace_back(10.0, 0.0, 0.0, sim_lifetime);
+            positions.emplace_back(0.0, 0.0, 10.0, sim_lifetime);
+            positions.emplace_back(10.0, 0.0, 10.0, sim_lifetime);
+            positions.emplace_back(10.0, 10.0, 10.0, sim_lifetime);
+            positions.emplace_back(10.0, 10.0, 0.0, sim_lifetime);
+            positions.emplace_back(0.0, 10.0, 10.0, sim_lifetime);
+            positions.emplace_back(0.0, 10.0, 0.0, sim_lifetime);
+            positions.emplace_back(5.0, 5.0, 0.0, sim_lifetime);
+            for (int i = 0; i < 10; ++i)
+            {
+                velocities.emplace_back(0.0, 0.0, 0.0, sim_lifetime);
+            }
+        }
 
-        positions.emplace_back(0.0, 0.0, 0.0, sim_lifetime);
-        velocities.emplace_back(0.0, 0.0, 0.0, sim_lifetime);
-
-        positions.emplace_back(10.0, 0.0, 0.0, sim_lifetime);
-        velocities.emplace_back(0.0, 0.0, 0.0, sim_lifetime);
-
-        positions.emplace_back(0.0, 0.0, 10.0, sim_lifetime);
-        velocities.emplace_back(0.0, 0.0, 0.0, sim_lifetime);
-
-        positions.emplace_back(10.0, 0.0, 10.0, sim_lifetime);
-        velocities.emplace_back(0.0, 0.0, 0.0, sim_lifetime);
-
-        positions.emplace_back(10.0, 10.0, 10.0, sim_lifetime);
-        velocities.emplace_back(0.0, 0.0, 0.0, sim_lifetime);
-
-        positions.emplace_back(10.0, 10.0, 0.0, sim_lifetime);
-        velocities.emplace_back(0.0, 0.0, 0.0, sim_lifetime);
-
-        positions.emplace_back(0.0, 10.0, 10.0, sim_lifetime);
-        velocities.emplace_back(0.0, 0.0, 0.0, sim_lifetime);
-
-        positions.emplace_back(0.0, 10.0, 0.0, sim_lifetime);
-        velocities.emplace_back(0.0, 0.0, 0.0, sim_lifetime);
-
-        positions.emplace_back(5.0, 5.0, 0.0, sim_lifetime);
-        velocities.emplace_back(0.0, 0.0, 0.0, sim_lifetime);
 
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, positionsSSBO);
         glBufferSubData(GL_SHADER_STORAGE_BUFFER, aliveIndex * sizeof(glm::vec4), sizeof(glm::vec4) * (particleCount + 10), positions.data());
@@ -466,10 +458,13 @@ void Sim::addParticleCube(const glm::vec3& origin, float spacing, int particlesP
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
         GLuint newAliveCount = aliveIndex + particleCount;
+        particleNum = particleCount;
         glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &newAliveCount);
         glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
-        // set aliveFlags
+        
+        // initialise mass, radius, target density
         _mass = _targetDensity * std::pow(spacing, 3.0f);
+
     }
     else
     {
