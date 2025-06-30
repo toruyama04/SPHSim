@@ -48,6 +48,7 @@ Sim::~Sim()
     glDeleteBuffers(1, &forcesSSBO);
     glDeleteBuffers(1, &densitiesSSBO);
     glDeleteBuffers(1, &pressureSSBO);
+    glDeleteBuffers(1, &predictedVelocitySSBO);
     delete particleShader;
     delete densityUpdate;
     delete viscosityUpdate;
@@ -86,7 +87,7 @@ void Sim::initBuffers()
     glGenBuffers(1, &densitiesSSBO);
     glGenBuffers(1, &pressureSSBO);
 	glGenBuffers(1, &drawIndirectBuffer);
-    glGenBuffers(1, &testSSBO);
+    glGenBuffers(1, &predictedVelocitySSBO);
     glGenBuffers(1, &atomicCounterBuffer);
 
 	glBindVertexArray(VAO);
@@ -143,9 +144,9 @@ void Sim::initBuffers()
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * _max_particles, default_velocity.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, velocitiesSSBO);
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, testSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, predictedVelocitySSBO);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * _max_particles, default_velocity.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, testSSBO);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, predictedVelocitySSBO);
 
     // 4
     std::vector<int> flag_default(_max_particles, 0);
@@ -197,40 +198,43 @@ void Sim::update(float delta_time)
 {
     // GLuint count = getAliveCount();
     GLuint count = particleNum;
-
     GLuint groupNum = (count + 255) / 256;
+
+    // resetting force 5, prefix buffer 15, particleNumPerBin 9, neighbourlist 14
     resetShader->use();
     resetShader->setUInt("particleNum", count);
-    resetShader->setUInt("maxN", maxNeighbourNum);
+    resetShader->setUInt("maxNeighbours", maxNeighbourNum);
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
 
-    // find all neighbours
+    // find all neighbours and build neighbourList
     _neighbour_grids->build(count, this->_radius);
 
-    // calculate non-pressure forces to find intermediate velocity v*
-    // use Eq 8
-    float poly6lap = 45.0f / (3.14159265359f * std::pow(_radius, 6.0f));
-
-    /*velocityIntermediate->use();
-    velocityIntermediate->setFloat("dt", delta_time);
-    velocityIntermediate->setFloat("mass", _mass);
-    velocityIntermediate->setUInt("particleNum", count);
-    glDispatchCompute(groupNum, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);*/
-
-    // calculate new density using intermediate velocity v*
-    // use Eq in Algo 2
-    float poly6 = 315.0f / (64.0f * 3.14159265359f * std::pow(_radius, 9.0f));
-    float poly6mass = poly6 * _mass;
+    // reconstruct density
+    float h3 = _radius * _radius * _radius;
+    float kern_norm = 8.0f / (3.14159265359f * h3);
     densityUpdate->use();
     densityUpdate->setFloat("h", this->_radius);
-    densityUpdate->setFloat("h2", _radius * _radius);
+    densityUpdate->setFloat("h3", h3);
     densityUpdate->setFloat("mass", _mass);
     densityUpdate->setUInt("particleNum", count);
     densityUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
-    densityUpdate->setFloat("poly6mass", poly6mass);
-    densityUpdate->setFloat("p0", _targetDensity);
+    densityUpdate->setFloat("sigma", kern_norm);
+    glDispatchCompute(groupNum, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
+
+    // viscosity for water
+    float kinematic_viscosity = 0.001 / 1000;
+    float kernel_grad = 48 / (3.14159265359f * h3 * _radius);
+    viscosityUpdate->use();
+    viscosityUpdate->setFloat("kviscosity", kinematic_viscosity);
+    viscosityUpdate->setFloat("h", _radius);
+    viscosityUpdate->setUInt("particleNum", count);
+    viscosityUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
+    viscosityUpdate->setFloat("mass", _mass);
+    viscosityUpdate->setFloat("kernelg", kernel_grad);
+    viscosityUpdate->setFloat("dt", delta_time);
+    viscosityUpdate->setVec3("gravity", glm::vec3(0.0, -9.8, 0.0));
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
 
@@ -253,16 +257,7 @@ void Sim::update(float delta_time)
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);*/
 
-    /*viscosityUpdate->use();
-    viscosityUpdate->setFloat("viscosityCoefficient", poly6lap);
-    viscosityUpdate->setFloat("h", _radius);
-    viscosityUpdate->setUInt("particleNum", count);
-    viscosityUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
-    viscosityUpdate->setFloat("mass", _mass);
-    viscosityUpdate->setFloat("e", 0.3f);
-    viscosityUpdate->setVec3("grav", glm::vec3(0.0f, -9.8f, 0.0f));
-    glDispatchCompute(groupNum, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);*/
+    
 
     timeIntegrations->use();
     timeIntegrations->setFloat("dt", delta_time);
@@ -323,7 +318,7 @@ void Sim::resetAliveCount(GLuint amount)
     glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
 }
 
-void Sim::addSim(const glm::vec3& origin, const GLuint particle_num)
+/*void Sim::addSim(const glm::vec3& origin, const GLuint particle_num)
 {
     GLuint aliveIndex = getAliveCount();
     _neighbour_grids = std::make_unique<PointHashGridSearcher3>(10, 10, 10, particle_num, maxNeighbourNum);
@@ -392,13 +387,13 @@ void Sim::addSim(const glm::vec3& origin, const GLuint particle_num)
     }
     else
         std::cout << "exceeded max particle num\n";
-}
+}*/
 
 void Sim::addParticleCube(const glm::vec3& center, float spacing, int particlesPerSide)
 {
     GLuint aliveIndex = getAliveCount();
     int particleCount = particlesPerSide * particlesPerSide * particlesPerSide;
-    _neighbour_grids = new Grid(10, 10, 10, particleCount, maxNeighbourNum);
+    _neighbour_grids = new Grid(10, 10, 10, particleCount, maxNeighbourNum, 1.0f, glm::vec3(0.0));
 
     if (aliveIndex + particleCount < _max_particles)
     {

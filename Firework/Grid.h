@@ -7,7 +7,9 @@
 class Grid
 {
 public:
-	Grid(GLuint resolutionX, GLuint resolutionY, GLuint resolutionZ, GLuint particleNum, GLuint maxNeighbourNum);
+	Grid(GLuint resolutionX, GLuint resolutionY, GLuint resolutionZ, 
+		GLuint particleNum, GLuint maxNeighbourNum,
+		float gridSpacing, glm::vec3 gridOrigin);
 	~Grid();
 	void build(GLuint particleNum, float searchRadius);
 
@@ -25,8 +27,11 @@ private:
 	Shader* countShader;
 	Shader* reorderShader;
 	Shader* generateNeighbourListShader;
+	Shader* prefixSumShader;
 
 	glm::vec3 resolutionVec;
 	GLuint binCount;
-	GLuint maxneighbourNum;
+	GLuint maxNeighbourNum;
+	float gridSpacing;
+	glm::vec3 gridOrigin;
 };

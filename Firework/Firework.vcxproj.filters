@@ -70,6 +70,7 @@
     <None Include="shaders\timeIntegration.comp" />
     <None Include="shaders\resetShader.comp" />
     <None Include="shaders\updateVelocity.comp" />
+    <None Include="shaders\computePrefixSum.comp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="smoke.png">

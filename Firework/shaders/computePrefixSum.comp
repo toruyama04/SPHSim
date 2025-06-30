@@ -1,0 +1,22 @@
+#version 460
+
+layout(local_size_x = 1) in;
+
+layout(std430, binding = 9) buffer BinCounts {
+    uint binCounts[];
+};
+layout(std430, binding = 11) buffer PrefixSum {
+    uint prefixSum[];
+};
+
+uniform uint binCount;
+uniform uint particleNum;
+
+void main() {
+    uint sum = 0;
+    for (uint i = 0; i < binCount; ++i) {
+        prefixSum[i] = sum;
+        sum += binCounts[i];
+    }
+    prefixSum[binCount] = particleNum;
+}

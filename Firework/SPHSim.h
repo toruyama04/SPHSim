@@ -24,7 +24,7 @@ public:
 	void render(const glm::mat4& view, const glm::mat4& projection);
 	void update(float delta_time);
 
-	void addSim(const glm::vec3& origin, const GLuint particle_num);
+	//void addSim(const glm::vec3& origin, const GLuint particle_num);
 	void addParticleCube(const glm::vec3& origin, float spacing, int particlesPerSide);
 
 	GLuint getAliveCount();
@@ -38,6 +38,7 @@ private:
 	float sim_lifetime;
 
 	// particleSystemData
+	// radius is also the 'smoothing length' also referred to as 'h'
 	float _radius = 1.0f;
 	float _mass;
 	GLuint particleNum;
@@ -59,7 +60,7 @@ private:
 	GLuint positionsSSBO, velocitiesSSBO, aliveFlagSSBO, forcesSSBO, densitiesSSBO, pressureSSBO;
 	GLuint atomicCounterBuffer;
 	GLuint drawIndirectBuffer;
-	GLuint testSSBO;
+	GLuint predictedVelocitySSBO;
 	// GLuint particleTexture;
 	DrawElementsIndirectCommand cmd;
 };

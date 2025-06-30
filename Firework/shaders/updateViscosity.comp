@@ -10,6 +10,10 @@ layout(std430, binding = 1) buffer Velocities {
     vec4 velocity[];
 };
 
+layout(std430, binding = 2) buffer PredictedVelocity {
+    vec4 predictedVelocity[];
+};
+
 layout(std430, binding = 5) buffer ForcesSSBO {
     vec4 forces[];
 };
@@ -26,14 +30,14 @@ layout(std430, binding = 16) buffer EndIndex {
     uint endIndex[];
 };
 
-uniform float viscosityCoefficient;
-uniform uint particleNum;
+uniform float kviscosity;
 uniform float h;
+uniform uint particleNum;
 uniform uint maxNeighbourNum;
 uniform float mass;
-uniform float e;
-uniform vec3 grav;
-
+uniform float kernelg;
+uniform float dt;
+uniform vec3 gravity;
 
 void main()
 {
@@ -44,13 +48,13 @@ void main()
     vec3 v_i = velocity[idx].xyz;
     float d_i = densities[idx];
 
-    vec3 viscosityForce = vec3(0.0);
-
     uint startIndex = idx * maxNeighbourNum;
-    uint endI = endIndex[idx];
+    uint endIndex = endIndex[idx];
+
+    vec3 lapv = vec3(0.0);
 
     // going through neighbour particles
-    for (uint i = startIndex; i < endI; ++i)
+    for (uint i = startIndex; i < endIndex; ++i)
     {
         uint nI = neighbourList[i];
 
@@ -58,18 +62,24 @@ void main()
         vec3 v_j = velocity[nI].xyz;
         float d_j = densities[nI];
 
-        vec3 diff = x_i - x_j;
-        float r2 = dot(diff, diff);
-        float r = sqrt(r2);
+        vec3 v_diff = v_i - v_j;
 
-        if (r > 0.0 && r < h)
-        {
-            vec3 rnorm = diff / r;
-            float w = viscosityCoefficient * (h - r);
-            viscosityForce += (1.0 / d_j) * (v_j - v_i) * w * rnorm;            
-        }
+        // if r_ij = 0, could cause NaN errors
+        vec3 r_ij = x_i - x_j;
+        float r = length(r_ij);
+        vec3 dir = r_ij / r;
+
+        float q = r / h;
+        vec3 w1 = kernelg * (3.0 * q * q - 2.0 * q) * dir;
+        vec3 w2 = -kernelg * pow(1.0 - q, 2.0) * dir;
+
+        float pieceWise1  = step(0.0, q) * step(q, 0.5);
+        float pieceWise2  = step(0.5, q) * step(q, 1.0);
+        vec3 w = pieceWise1  * w1 + pieceWise2  * w2;
+        w *= step(q, 1.0001);
+
+        lapv += (mass / d_j) * ((dot(v_diff, r_ij)) / (r * r)) * w;
     }
-    viscosityForce *= e;
-    forces[idx].xyz += viscosityForce / d_i;
-    forces[idx].xyz += grav;
+    vec3 viscosityForce = mass * kviscosity * (10 * lapv);
+    predictedVelocity[idx].xyz = velocity[idx].xyz + (dt / mass) * (viscosityForce + gravity);
 }

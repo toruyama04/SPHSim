@@ -24,7 +24,7 @@ layout(std430, binding = 16) buffer EndIndex {
 
 
 uniform uint particleNum;
-uniform uint maxN;
+uniform uint maxNeighbours;
 
 void main()
 {
@@ -35,7 +35,8 @@ void main()
     indexCount[idx] = 0;
     bins[idx] = 0;
     
-    uint start = idx * maxN;
+    // resetting the neighbourlist 
+    uint start = idx * maxNeighbours;
     uint endI = endIndex[idx];
     for (uint i = start; i < endI; ++i)
     {

@@ -2,10 +2,6 @@
 
 layout(local_size_x = 256) in;
 
-layout(std430, binding = 0) buffer PositionsSSBO {
-    vec4 particlePositions[];
-};
-
 layout(std430, binding = 10) buffer binIndexForParticleSSBO {
     uint binIndexForParticle[];
 };
@@ -18,7 +14,7 @@ layout(std430, binding = 15) buffer prefixIndexCounter {
     uint prefixCounter[];
 };
 
-layout(std430, binding = 11) buffer prefixS {
+layout(std430, binding = 11) buffer prefixForBinReorderSSBO {
     uint prefixSum[];
 };
 
@@ -30,6 +26,9 @@ void main() {
 
     uint binIndex = binIndexForParticle[idx];
 
+    // atomicAdd returns value before increasing it
+    // we use the buffer as a counter so that each particle is placed
+    // in its correct position 
     uint posInOrderedArray = atomicAdd(prefixCounter[binIndex], 1);
 
     particlesOrderedByBin[prefixSum[binIndex] + posInOrderedArray] = idx;

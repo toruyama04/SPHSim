@@ -160,6 +160,7 @@
     <ClInclude Include="stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="shaders\computePrefixSum.comp" />
     <None Include="shaders\count.comp" />
     <None Include="shaders\buildNeighbourList.comp" />
     <None Include="shaders\reorder.comp" />

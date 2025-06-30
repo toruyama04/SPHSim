@@ -59,14 +59,16 @@ void main() {
         for (uint j = neighborBinStart; j < neighborBinEnd; ++j) {
             uint nIndex = particlesOrderedByBin[j];
             vec3 neighborPos = positions[nIndex].xyz;
-            float dist = distance(particlePos, neighborPos);
+            float dist = dot(particlePos - neighborPos, particlePos - neighborPos);
 
-            if (neighborCount < maxNeighborsPerParticle) {
-                if (dist > 0.0) {
-                    if (dist < (searchRadius * 2.0)) {
-                        neighborList[neighborListStart + neighborCount] = nIndex;
-                        neighborCount++;
-                    }
+            if (dist < (searchRadius * 2.0) * (searchRadius * 2.0)) {
+                neighborList[neighborListStart + neighborCount] = nIndex;
+                neighborCount++;
+
+                // exit early if we reach maxNeighbourCount
+                if (neighborCount >= maxNeighborsPerParticle) {
+                    endIndex[idx] = neighborListStart + neighborCount;
+                    return;
                 }
             }
         }
