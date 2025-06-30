@@ -174,9 +174,6 @@
     <None Include="shaders\updateViscosity.comp" />
     <None Include="shaders\updateVelocity.comp" />
   </ItemGroup>
-  <ItemGroup>
-    <Image Include="smoke.png" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

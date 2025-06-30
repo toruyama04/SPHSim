@@ -72,9 +72,4 @@
     <None Include="shaders\updateVelocity.comp" />
     <None Include="shaders\computePrefixSum.comp" />
   </ItemGroup>
-  <ItemGroup>
-    <Image Include="smoke.png">
-      <Filter>Resource Files</Filter>
-    </Image>
-  </ItemGroup>
 </Project>

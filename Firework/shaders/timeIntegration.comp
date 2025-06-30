@@ -7,7 +7,11 @@ layout(std430, binding = 0) buffer Positions {
 };
 
 layout(std430, binding = 1) buffer Velocities {
-    vec4 velocities[];
+    vec4 velocity[];
+};
+
+layout(std430, binding = 2) buffer PredictedVelocity {
+    vec4 predVelocity[];
 };
 
 layout(std430, binding = 5) buffer ForcesSSBO {
@@ -22,24 +26,17 @@ uniform float dt;
 uniform uint particleNum;
 uniform vec3 boundaryMin;
 uniform vec3 boundaryMax;
+uniform float mass;
 
 void main()
 {
     uint idx = gl_GlobalInvocationID.x;
     if (idx >= particleNum) return;
-
-    vec4 pos = positions[idx];
-    vec3 vel = velocities[idx].xyz;
-    vec3 force = forces[idx].xyz;
-    float dens = densities[idx];
     
-    vel += force * dt;
-    vel *= 0.99;
-    pos.xyz += vel * dt;
-    // pos.w -= dt;
+    vec3 vel = predVelocity[idx].xyz + (dt / mass) * forces[idx].xyz;
+    vec3 pos = positions[idx].xyz + dt * vel;
 
-
-     if (pos.x < boundaryMin.x) {
+    if (pos.x < boundaryMin.x) {
         pos.x = boundaryMin.x;
         vel.x = -vel.x;
     } else if (pos.x > boundaryMax.x) {
@@ -63,7 +60,6 @@ void main()
         vel.z = -vel.z;
     }
 
-    positions[idx] = pos;
-    velocities[idx].xyz = vel;
-    forces[idx].xyz = vec3(0.0);
+    positions[idx].xyz = pos;
+    velocity[idx].xyz = vel;
 }

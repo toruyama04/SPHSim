@@ -224,7 +224,7 @@ void Sim::update(float delta_time)
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
 
     // viscosity for water
-    float kinematic_viscosity = 0.001 / 1000;
+    float kinematic_viscosity = 0.001f / 1000.0f;
     float kernel_grad = 48 / (3.14159265359f * h3 * _radius);
     viscosityUpdate->use();
     viscosityUpdate->setFloat("kviscosity", kinematic_viscosity);
@@ -240,30 +240,23 @@ void Sim::update(float delta_time)
 
     // use Eq 9
     pressureCompute->use();
-    pressureCompute->setFloat("targetDensity", _targetDensity);
-    pressureCompute->setFloat("k", 100.0f);
+    pressureCompute->setFloat("restDensity", _targetDensity);
+    pressureCompute->setFloat("h", _radius);
+    pressureCompute->setFloat("k1", 100.0f);
+    pressureCompute->setFloat("k2", 7.0f);
     pressureCompute->setUInt("particleNum", count);
+    pressureCompute->setUInt("maxNeighbourNum", maxNeighbourNum);
+    pressureCompute->setFloat("kernelg", kernel_grad);
+    pressureCompute->setFloat("mass", _mass);
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
-
-    // use Eq 6
-    float spikyGrad = -45.0f / (3.14159265359f * std::pow(_radius, 6.0f));
-    /*pressureUpdate->use();
-    pressureUpdate->setFloat("h", _radius);
-    pressureUpdate->setUInt("particleNum", count);
-    pressureUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
-    pressureUpdate->setFloat("spikyGrad", spikyGrad);
-    pressureUpdate->setFloat("mass", _mass);
-    glDispatchCompute(groupNum, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);*/
-
-    
 
     timeIntegrations->use();
     timeIntegrations->setFloat("dt", delta_time);
     timeIntegrations->setUInt("particleNum", count);
     timeIntegrations->setVec3("boundaryMin", glm::vec3(0.0, 0.0, 0.0));
     timeIntegrations->setVec3("boundaryMax", glm::vec3(10.0, 10.0, 10.0));
+    timeIntegrations->setFloat("mass", _mass);
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
 }

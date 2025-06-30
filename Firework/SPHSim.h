@@ -43,7 +43,7 @@ private:
 	float _mass;
 	GLuint particleNum;
 	GLuint maxNeighbourNum = 20;
-	float _targetDensity = 2.0f;
+	float _targetDensity = 1000.0f;
 
 	Shader* particleShader;
 	Shader* densityUpdate;

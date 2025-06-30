@@ -15,7 +15,7 @@ Grid::Grid(GLuint resolutionX, GLuint resolutionY, GLuint resolutionZ,
 
     resolutionVec = glm::vec3(resolutionX, resolutionY, resolutionZ);
     binCount = resolutionX * resolutionY * resolutionZ;
-    this->maxneighbourNum = maxneighbourNum;
+    this->maxNeighbourNum = maxneighbourNum;
     this->gridSpacing = gridSpacing;
     this->gridOrigin = gridOrigin;
 
@@ -42,9 +42,9 @@ Grid::Grid(GLuint resolutionX, GLuint resolutionY, GLuint resolutionZ,
                 for (int dz = -1; dz <= 1; ++dz) {
                     for (int dy = -1; dy <= 1; ++dy) {
                         for (int dx = -1; dx <= 1; ++dx) {
-                            int nx = x + dx;
-                            int ny = y + dy;
-                            int nz = z + dz;
+                            unsigned int nx = x + dx;
+                            unsigned int ny = y + dy;
+                            unsigned int nz = z + dz;
                             if (nx >= 0 && nx < resolutionX &&
                                 ny >= 0 && ny < resolutionY &&
                                 nz >= 0 && nz < resolutionZ) {
