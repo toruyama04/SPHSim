@@ -7,9 +7,8 @@
 class Grid
 {
 public:
-	Grid(GLuint resolutionX, GLuint resolutionY, GLuint resolutionZ, 
-		GLuint particleNum, GLuint maxNeighbourNum,
-		float gridSpacing, glm::vec3 gridOrigin);
+	Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint particleNum, 
+		GLuint maxNeighbourNum, float gridSpacing);
 	~Grid();
 	void build(GLuint particleNum, float searchRadius);
 

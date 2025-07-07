@@ -26,10 +26,12 @@ unsigned int indices[] = {
     1, 2, 3
 };
 
-Sim::Sim()
+Sim::Sim(glm::vec3 origin, glm::vec3 gridExtent)
 {
     sim_lifetime = 100.0f;
     _max_particles = 1500000;
+    this->origin = origin;
+    this->extents = gridExtent;
 
 	initBuffers();
 	initShaders();
@@ -211,7 +213,7 @@ void Sim::update(float delta_time)
     
     _neighbour_grids->build(count, this->_radius);
 
-    /*
+ 
     // reconstruct density
     float h3 = _radius * _radius * _radius;
     float kern_norm = 8.0f / (3.14159265359f * h3);
@@ -225,6 +227,7 @@ void Sim::update(float delta_time)
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
 
+
     // viscosity for water
     float kinematic_viscosity = 0.001f / 1000.0f;
     float kernel_grad = 48 / (3.14159265359f * h3 * _radius);
@@ -236,10 +239,11 @@ void Sim::update(float delta_time)
     viscosityUpdate->setFloat("mass", _mass);
     viscosityUpdate->setFloat("kernelg", kernel_grad);
     viscosityUpdate->setFloat("dt", delta_time);
-    viscosityUpdate->setVec3("gravity", glm::vec3(0.0, 0.0, 0.0));
+    viscosityUpdate->setVec3("gravity", glm::vec3(0.0, -9.8, 0.0));
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
 
+    
     // use Eq 9
     pressureCompute->use();
     pressureCompute->setFloat("restDensity", _targetDensity);
@@ -252,7 +256,7 @@ void Sim::update(float delta_time)
     pressureCompute->setFloat("mass", _mass);
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
-
+    /*
     timeIntegrations->use();
     timeIntegrations->setFloat("dt", delta_time);
     timeIntegrations->setUInt("particleNum", count);
@@ -384,11 +388,11 @@ void Sim::resetAliveCount(GLuint amount)
         std::cout << "exceeded max particle num\n";
 }*/
 
-void Sim::addParticleCube(const glm::vec3 center, float spacing, int particlesPerSide, const glm::vec3 gridExtents)
+void Sim::addParticleCube(const glm::vec3 center, float spacing, int particlesPerSide)
 {
     GLuint aliveIndex = getAliveCount();
     int particleCount = particlesPerSide * particlesPerSide * particlesPerSide;
-    _neighbour_grids = new Grid(25, 25, 25, particleCount, maxNeighbourNum, 0.2f, glm::vec3(0.0));
+    _neighbour_grids = new Grid(origin, extents, particleCount, maxNeighbourNum, _radius);
 
     if (aliveIndex + particleCount < _max_particles)
     {
@@ -397,7 +401,6 @@ void Sim::addParticleCube(const glm::vec3 center, float spacing, int particlesPe
 
         int index = 0;
         float halfSide = (particlesPerSide - 1) * spacing * 0.5f;
-        float offsetMagnitude = spacing * 0.1f;
 
         for (int x = 0; x < particlesPerSide && index < particleCount; ++x) {
             for (int y = 0; y < particlesPerSide && index < particleCount; ++y) {
@@ -413,16 +416,16 @@ void Sim::addParticleCube(const glm::vec3 center, float spacing, int particlesPe
             }
         }
 
-        // edges of the grid (10)
+        // edges of the grid for visualisation (static)
         {
-            positions.emplace_back(center, sim_lifetime);
-            positions.emplace_back(center.x + gridExtents.x, center.y, center.z, sim_lifetime);
-            positions.emplace_back(center.x + gridExtents.x, center.y + gridExtents.y, center.z, sim_lifetime);
-            positions.emplace_back(center.x + gridExtents.x, center.y, center.z + gridExtents.z, sim_lifetime);
-            positions.emplace_back(center.x, center.y + gridExtents.y, center.z + gridExtents.z, sim_lifetime);
-            positions.emplace_back(center.x, center.y, center.z + gridExtents.z, sim_lifetime);
-            positions.emplace_back(center.x, center.y + gridExtents.y, center.z, sim_lifetime);
-            positions.emplace_back(center + gridExtents, sim_lifetime);
+            positions.emplace_back(origin, sim_lifetime);
+            positions.emplace_back(extents.x, origin.y, origin.z, sim_lifetime);
+            positions.emplace_back(extents.x, extents.y, origin.z, sim_lifetime);
+            positions.emplace_back(extents.x, origin.y, extents.z, sim_lifetime);
+            positions.emplace_back(origin.x, extents.y, extents.z, sim_lifetime);
+            positions.emplace_back(origin.x, origin.y, extents.z, sim_lifetime);
+            positions.emplace_back(origin.x, extents.y, origin.z, sim_lifetime);
+            positions.emplace_back(extents, sim_lifetime);
             velocities.emplace_back(0.0, 0.0, 0.0, 10.0);
             for (int i = 0; i < 6; ++i)
             {
@@ -431,7 +434,6 @@ void Sim::addParticleCube(const glm::vec3 center, float spacing, int particlesPe
             velocities.emplace_back(0.0, 0.0, 0.0, 10.0);
 
         }
-
 
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, positionsSSBO);
         glBufferSubData(GL_SHADER_STORAGE_BUFFER, aliveIndex * sizeof(glm::vec4), sizeof(glm::vec4) * (particleCount + 8), positions.data());
@@ -446,7 +448,6 @@ void Sim::addParticleCube(const glm::vec3 center, float spacing, int particlesPe
         
         // initialise mass, radius, target density
         _mass = _targetDensity * std::pow(spacing, 3.0f);
-
     }
     else
     {

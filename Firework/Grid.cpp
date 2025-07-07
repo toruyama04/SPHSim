@@ -1,8 +1,8 @@
 ﻿#include "Grid.h"
 #include <vector>
 
-Grid::Grid(GLuint resolutionX, GLuint resolutionY, GLuint resolutionZ, 
-    GLuint particleNum, GLuint maxneighbourNum, float gridSpacing, glm::vec3 gridOrigin)
+Grid::Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint particleNum,
+    GLuint maxNeighbourNum, float gridSpacing)
 {
     glGenBuffers(1, &particleNumPerBinSSBO);
     glGenBuffers(1, &binIndexForParticleSSBO);
@@ -13,15 +13,18 @@ Grid::Grid(GLuint resolutionX, GLuint resolutionY, GLuint resolutionZ,
     glGenBuffers(1, &neighbourListSSBO);
     glGenBuffers(1, &endIndexNeighbourSSBO);
 
-    resolutionVec = glm::vec3(resolutionX, resolutionY, resolutionZ);
-    binCount = resolutionX * resolutionY * resolutionZ;
-    this->maxNeighbourNum = maxneighbourNum;
+    // should precompute instead of fixed value
+    // GLuint resolution = (extents.x - gridOrigin.x) / gridSpacing;
+    GLuint resolution = 25;
+    binCount = resolution * resolution * resolution;
+    resolutionVec = glm::vec3(resolution, resolution, resolution);
+    this->maxNeighbourNum = maxNeighbourNum;
     this->gridSpacing = gridSpacing;
     this->gridOrigin = gridOrigin;
 
     std::vector<GLuint> initialBinValue(binCount, 0);
     std::vector<GLuint> initialParticleValue(particleNum, 0);
-    std::vector<GLuint> initialN(particleNum * maxneighbourNum, 0);
+    std::vector<GLuint> initialN(particleNum * maxNeighbourNum, 0);
     std::vector<GLuint> initialPrefix(binCount + 1, 0);
     initialPrefix[binCount] = particleNum;
 
@@ -33,11 +36,11 @@ Grid::Grid(GLuint resolutionX, GLuint resolutionY, GLuint resolutionZ,
 
     // computing the neighbouring bin indices for all bins
     // const GLuint NO_NEIGHBOR = std::numeric_limits<GLuint>::max();
-    std::vector<GLuint> flatNeighbors(resolutionX * resolutionY * resolutionZ * 27, 111111);
-    for (unsigned int x = 0; x < resolutionX; ++x) {
-        for (unsigned int y = 0; y < resolutionY; ++y) {
-            for (unsigned int z = 0; z < resolutionZ; ++z) {
-                int baseIndex = (x + (y * resolutionX) + (z * resolutionX * resolutionY)) * 27;
+    std::vector<GLuint> flatNeighbors(binCount * 27, 111111);
+    for (unsigned int x = 0; x < resolution; ++x) {
+        for (unsigned int y = 0; y < resolution; ++y) {
+            for (unsigned int z = 0; z < resolution; ++z) {
+                int baseIndex = (x + (y * resolution) + (z * resolution * resolution)) * 27;
                 int index = 0;
                 for (int dz = -1; dz <= 1; ++dz) {
                     for (int dy = -1; dy <= 1; ++dy) {
@@ -45,10 +48,10 @@ Grid::Grid(GLuint resolutionX, GLuint resolutionY, GLuint resolutionZ,
                             unsigned int nx = x + dx;
                             unsigned int ny = y + dy;
                             unsigned int nz = z + dz;
-                            if (nx >= 0 && nx < resolutionX &&
-                                ny >= 0 && ny < resolutionY &&
-                                nz >= 0 && nz < resolutionZ) {
-                                GLuint neighborIndex = nx + (ny * resolutionX) + (nz * resolutionX * resolutionY);
+                            if (nx >= 0 && nx < resolution &&
+                                ny >= 0 && ny < resolution &&
+                                nz >= 0 && nz < resolution) {
+                                GLuint neighborIndex = nx + (ny * resolution) + (nz * resolution * resolution);
                                 flatNeighbors[baseIndex + index] = neighborIndex;
                             }
                             else {
@@ -64,7 +67,7 @@ Grid::Grid(GLuint resolutionX, GLuint resolutionY, GLuint resolutionZ,
 
     glNamedBufferData(flatNeighboursSSBO, sizeof(GLuint) * flatNeighbors.size(), flatNeighbors.data(), GL_STATIC_DRAW);
     glNamedBufferData(prefixIndexCounter, sizeof(GLuint) * binCount, initialBinValue.data(), GL_DYNAMIC_DRAW);
-    glNamedBufferData(neighbourListSSBO, sizeof(GLuint) * particleNum * maxneighbourNum, nullptr, GL_DYNAMIC_DRAW);
+    glNamedBufferData(neighbourListSSBO, sizeof(GLuint) * particleNum * maxNeighbourNum, nullptr, GL_DYNAMIC_DRAW);
     glNamedBufferData(endIndexNeighbourSSBO, sizeof(GLuint) * particleNum, initialParticleValue.data(), GL_DYNAMIC_DRAW);
 
     // Bind buffers to binding points
@@ -97,8 +100,8 @@ void Grid::build(GLuint particleNum, float searchRadius) {
     // setting bin index for each particle, counting particles per bin
     countShader->use();
     countShader->setVec3("gridResolution", resolutionVec);
-    countShader->setVec3("gridOrigin", glm::vec3(0.0));
-    countShader->setFloat("gridSpacing", 1.0f);
+    countShader->setVec3("gridOrigin", gridOrigin);
+    countShader->setFloat("gridSpacing", gridSpacing);
     countShader->setUInt("particleNum", particleNum);
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
