@@ -25,7 +25,8 @@ public:
 	void update(float delta_time);
 
 	//void addSim(const glm::vec3& origin, const GLuint particle_num);
-	void addParticleCube(const glm::vec3& origin, float spacing, int particlesPerSide);
+	void addParticleCube(const glm::vec3 origin, float spacing, int particlesPerSide,
+		const glm::vec3 gridExtents);
 
 	GLuint getAliveCount();
 	void resetAliveCount(GLuint amount);
@@ -39,10 +40,10 @@ private:
 
 	// particleSystemData
 	// radius is also the 'smoothing length' also referred to as 'h'
-	float _radius = 1.0f;
+	float _radius = 0.2f;
 	float _mass;
 	GLuint particleNum;
-	GLuint maxNeighbourNum = 20;
+	GLuint maxNeighbourNum = 0;
 	float _targetDensity = 1000.0f;
 
 	Shader* particleShader;

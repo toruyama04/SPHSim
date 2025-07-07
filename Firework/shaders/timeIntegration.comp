@@ -24,8 +24,6 @@ layout(std430, binding = 6) buffer DensitySSBO {
 
 uniform float dt;
 uniform uint particleNum;
-uniform vec3 boundaryMin;
-uniform vec3 boundaryMax;
 uniform float mass;
 
 void main()
@@ -36,29 +34,7 @@ void main()
     vec3 vel = predVelocity[idx].xyz + (dt / mass) * forces[idx].xyz;
     vec3 pos = positions[idx].xyz + dt * vel;
 
-    if (pos.x < boundaryMin.x) {
-        pos.x = boundaryMin.x;
-        vel.x = -vel.x;
-    } else if (pos.x > boundaryMax.x) {
-        pos.x = boundaryMax.x;
-        vel.x = -vel.x;
-    }
-
-    if (pos.y < boundaryMin.y) {
-        pos.y = boundaryMin.y;
-        vel.y = -vel.y;
-    } else if (pos.y > boundaryMax.y) {
-        pos.y = boundaryMax.y;
-        vel.y = -vel.y;
-    }
-
-    if (pos.z < boundaryMin.z) {
-        pos.z = boundaryMin.z;
-        vel.z = -vel.z;
-    } else if (pos.z > boundaryMax.z) {
-        pos.z = boundaryMax.z;
-        vel.z = -vel.z;
-    }
+    // reduce lifetime
 
     positions[idx].xyz = pos;
     velocity[idx].xyz = vel;
