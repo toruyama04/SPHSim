@@ -7,11 +7,11 @@ layout(std430, binding = 0) buffer Positions {
 };
 
 layout(std430, binding = 9) buffer particleNumPerBinSSBO {
-    uint bins[];
+    uint particleNumPerBin[];
 };
 
 layout(std430, binding = 10) buffer binIndexForParticleSSBO {
-    uint particleBinIndex[];
+    uint binIndexForParticle[];
 };
 
 uniform vec3 gridResolution;
@@ -38,9 +38,9 @@ void main()
 
         uint binIndex = uint(gridPosx + (gridPosy * gridResolution.x) + (gridPosz * gridResolution.x * gridResolution.y));
 
-        particleBinIndex[idx] = binIndex;
+        binIndexForParticle[idx] = binIndex;
 
-        atomicAdd(bins[binIndex], 1);
+        atomicAdd(particleNumPerBin[binIndex], 1);
     } else {
         positions[idx].w = -1.0;
     }

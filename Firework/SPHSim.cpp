@@ -29,7 +29,7 @@ unsigned int indices[] = {
 Sim::Sim(glm::vec3 origin, glm::vec3 gridExtent)
 {
     sim_lifetime = 100.0f;
-    _max_particles = 1500000;
+    _max_particles = 50000;
     this->origin = origin;
     this->extents = gridExtent;
 
@@ -196,24 +196,84 @@ void Sim::initBuffers()
     }*/
 }
 
+GLuint Sim::addBoundaryParticles(std::vector<glm::vec4>& positions, std::vector<glm::vec4>& velocities,
+    float spacing, int layers)
+{
+    glm::vec3 size = extents - origin;
+    int nx = static_cast<int>(std::floor(size.x / spacing));
+    int ny = static_cast<int>(std::floor(size.y / spacing));
+    int nz = static_cast<int>(std::floor(size.z / spacing));
+
+    GLuint count = 0;
+
+    auto push_particle = [&](glm::vec3 pos) {
+        positions.emplace_back(pos, 100.0f); // lifetime = 0.0 for boundary
+        velocities.emplace_back(glm::vec3(0.0f), 1.0f);
+        count += 1;
+        };
+
+    // -X and +X faces
+    for (int l = 0; l < layers; ++l) {
+        float xL = origin.x + l * spacing;
+        float xR = extents.x - l * spacing;
+        for (int y = 0; y <= ny; ++y) {
+            for (int z = 0; z <= nz; ++z) {
+                float yPos = origin.y + y * spacing;
+                float zPos = origin.z + z * spacing;
+                push_particle(glm::vec3(xL, yPos, zPos)); // -X
+                push_particle(glm::vec3(xR, yPos, zPos)); // +X
+            }
+        }
+    }
+
+    // -Y and +Y faces
+    for (int l = 0; l < layers; ++l) {
+        float yL = origin.y + l * spacing;
+        float yR = extents.y - l * spacing;
+        for (int x = 0; x <= nx; ++x) {
+            for (int z = 0; z <= nz; ++z) {
+                float xPos = origin.x + x * spacing;
+                float zPos = origin.z + z * spacing;
+                push_particle(glm::vec3(xPos, yL, zPos)); // -Y
+                push_particle(glm::vec3(xPos, yR, zPos)); // +Y
+            }
+        }
+    }
+
+    // -Z and +Z faces
+    for (int l = 0; l < layers; ++l) {
+        float zL = origin.z + l * spacing;
+        float zR = extents.z - l * spacing;
+        for (int x = 0; x <= nx; ++x) {
+            for (int y = 0; y <= ny; ++y) {
+                float xPos = origin.x + x * spacing;
+                float yPos = origin.y + y * spacing;
+                push_particle(glm::vec3(xPos, yPos, zL)); // -Z
+                push_particle(glm::vec3(xPos, yPos, zR)); // +Z
+            }
+        }
+    }
+    return count;
+}
+
+
 void Sim::update(float delta_time)
 {
     // GLuint count = getAliveCount();
-    GLuint count = particleNum;
-    GLuint groupNum = (count + 255) / 256;
+    GLuint groupNum = (fluidParticleNum + 255) / 256;
+    GLuint groupNumWithBoundary = (totalParticles + 255) / 256;
 
-    // resetting force 5, prefix buffer 15, particleNumPerBin 9, neighbourlist 14
     resetShader->use();
-    resetShader->setUInt("particleNum", count);
+    resetShader->setUInt("totalParticles", totalParticles);
     resetShader->setUInt("maxNeighbours", maxNeighbourNum);
-    glDispatchCompute(groupNum, 1, 1);
+    resetShader->setUInt("fluidParticleNum", fluidParticleNum);
+    glDispatchCompute(groupNumWithBoundary, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
 
     // find all neighbours and build neighbourList
-    
-    _neighbour_grids->build(count, this->_radius);
+    _neighbour_grids->build(totalParticles, this->_radius);
 
- 
+
     // reconstruct density
     float h3 = _radius * _radius * _radius;
     float kern_norm = 8.0f / (3.14159265359f * h3);
@@ -221,7 +281,8 @@ void Sim::update(float delta_time)
     densityUpdate->setFloat("h", this->_radius);
     densityUpdate->setFloat("h3", h3);
     densityUpdate->setFloat("mass", _mass);
-    densityUpdate->setUInt("particleNum", count);
+    densityUpdate->setUInt("fluidParticleNum", fluidParticleNum);
+    densityUpdate->setUInt("boundaryParticleNum", boundaryParticleNum);
     densityUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
     densityUpdate->setFloat("sigma", kern_norm);
     glDispatchCompute(groupNum, 1, 1);
@@ -234,7 +295,9 @@ void Sim::update(float delta_time)
     viscosityUpdate->use();
     viscosityUpdate->setFloat("kviscosity", kinematic_viscosity);
     viscosityUpdate->setFloat("h", _radius);
-    viscosityUpdate->setUInt("particleNum", count);
+    viscosityUpdate->setUInt("fluidParticleNum", fluidParticleNum);
+    viscosityUpdate->setUInt("boundaryParticleNum", boundaryParticleNum);
+    viscosityUpdate->setFloat("restDensity", _targetDensity);
     viscosityUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
     viscosityUpdate->setFloat("mass", _mass);
     viscosityUpdate->setFloat("kernelg", kernel_grad);
@@ -250,27 +313,28 @@ void Sim::update(float delta_time)
     pressureCompute->setFloat("h", _radius);
     pressureCompute->setFloat("k1", 100.0f);
     pressureCompute->setFloat("k2", 7.0f);
-    pressureCompute->setUInt("particleNum", count);
+    pressureCompute->setUInt("fluidParticleNum", fluidParticleNum);
+    pressureCompute->setUInt("boundaryParticleNum", boundaryParticleNum);
     pressureCompute->setUInt("maxNeighbourNum", maxNeighbourNum);
     pressureCompute->setFloat("kernelg", kernel_grad);
     pressureCompute->setFloat("mass", _mass);
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
-    /*
+   
     timeIntegrations->use();
     timeIntegrations->setFloat("dt", delta_time);
-    timeIntegrations->setUInt("particleNum", count);
+    timeIntegrations->setUInt("fluidParticleNum", fluidParticleNum);
+    timeIntegrations->setUInt("boundaryParticleNum", boundaryParticleNum);
     timeIntegrations->setFloat("mass", _mass);
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
-    */
+
 }
 
 void Sim::render(const glm::mat4& view, const glm::mat4& projection)
 {
     // GLuint count = getAliveCount();
-    GLuint count = particleNum;
-    count += 8;
+    GLuint count = totalParticles + 8;
     cmd = { 6, count, 0, 0, 0 };
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawIndirectBuffer);
     glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, sizeof(cmd), &cmd);
@@ -294,8 +358,6 @@ void Sim::render(const glm::mat4& view, const glm::mat4& projection)
         glMemoryBarrier(GL_ALL_BARRIER_BITS);
     }
     glBindVertexArray(0);
-
-
 
      /*shaders["floorShader"]->use();
      model = glm::mat4(1.0f);
@@ -392,13 +454,15 @@ void Sim::addParticleCube(const glm::vec3 center, float spacing, int particlesPe
 {
     GLuint aliveIndex = getAliveCount();
     int particleCount = particlesPerSide * particlesPerSide * particlesPerSide;
-    _neighbour_grids = new Grid(origin, extents, particleCount, maxNeighbourNum, _radius);
+    std::vector<glm::vec4> positions;
+    std::vector<glm::vec4> velocities;
+    GLuint addedParticles = addBoundaryParticles(positions, velocities, spacing, 2);
+
+    _neighbour_grids = new Grid(origin, extents, particleCount + addedParticles, maxNeighbourNum, _radius);
+    boundaryParticleNum = addedParticles;
 
     if (aliveIndex + particleCount < _max_particles)
     {
-        std::vector<glm::vec4> positions;
-        std::vector<glm::vec4> velocities;
-
         int index = 0;
         float halfSide = (particlesPerSide - 1) * spacing * 0.5f;
 
@@ -415,7 +479,7 @@ void Sim::addParticleCube(const glm::vec3 center, float spacing, int particlesPe
                 }
             }
         }
-
+        
         // edges of the grid for visualisation (static)
         {
             positions.emplace_back(origin, sim_lifetime);
@@ -436,16 +500,18 @@ void Sim::addParticleCube(const glm::vec3 center, float spacing, int particlesPe
         }
 
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, positionsSSBO);
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, aliveIndex * sizeof(glm::vec4), sizeof(glm::vec4) * (particleCount + 8), positions.data());
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, aliveIndex * sizeof(glm::vec4), sizeof(glm::vec4) * (particleCount + 8 + addedParticles), positions.data());
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, velocitiesSSBO);
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, aliveIndex * sizeof(glm::vec4), sizeof(glm::vec4) * (particleCount + 8), velocities.data());
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, aliveIndex * sizeof(glm::vec4), sizeof(glm::vec4) * (particleCount + 8 + addedParticles), velocities.data());
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
         GLuint newAliveCount = aliveIndex + particleCount;
-        particleNum = particleCount;
+        fluidParticleNum = particleCount;
         glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &newAliveCount);
         glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
-        
+        totalParticles = particleCount + addedParticles;
+        std::cout << totalParticles << "\n";
+
         // initialise mass, radius, target density
         _mass = _targetDensity * std::pow(spacing, 3.0f);
     }

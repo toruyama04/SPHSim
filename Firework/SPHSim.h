@@ -3,8 +3,9 @@
 #include <glm/vec4.hpp>
 
 #include "Shader.h"
-
 #include "Grid.h"
+
+#include <vector>
 
 class Sim
 {
@@ -26,6 +27,8 @@ public:
 
 	//void addSim(const glm::vec3& origin, const GLuint particle_num);
 	void addParticleCube(const glm::vec3 origin, float spacing, int particlesPerSide);
+	GLuint addBoundaryParticles(std::vector<glm::vec4>& positions, std::vector<glm::vec4>& velocities,
+		float spacing, int layers);
 
 	GLuint getAliveCount();
 	void resetAliveCount(GLuint amount);
@@ -43,7 +46,9 @@ private:
 	// radius is also the 'smoothing length' also referred to as 'h'
 	float _radius = 0.2f;
 	float _mass;
-	GLuint particleNum;
+	GLuint fluidParticleNum;
+	GLuint totalParticles;
+	GLuint boundaryParticleNum;
 	GLuint maxNeighbourNum = 50;
 	float _targetDensity = 1000.0f;
 

@@ -2,11 +2,16 @@
 
 layout(local_size_x = 1) in;
 
-layout(std430, binding = 9) buffer BinCounts {
-    uint binCounts[];
+layout(std430, binding = 9) buffer particleNumPerBinSSBO {
+    uint particleNumPerBin[];
 };
-layout(std430, binding = 11) buffer PrefixSum {
-    uint prefixSum[];
+
+layout(std430, binding = 11) buffer prefixForBinReorderSSBO {
+    uint prefixForBinReorder[];
+};
+
+layout(std430, binding = 15) buffer prefixIndexCounterSSBO {
+    uint prefixIndexCounter[];
 };
 
 uniform uint binCount;
@@ -15,8 +20,9 @@ uniform uint particleNum;
 void main() {
     uint sum = 0;
     for (uint i = 0; i < binCount; ++i) {
-        prefixSum[i] = sum;
-        sum += binCounts[i];
+        prefixForBinReorder[i] = sum;
+        sum += particleNumPerBin[i];
+        prefixIndexCounter[i] = 0;
     }
-    prefixSum[binCount] = particleNum;
+    prefixForBinReorder[binCount] = particleNum;
 }

@@ -20,13 +20,13 @@ private:
 	GLuint particlesOrderedByBinSSBO;
 	GLuint flatNeighboursSSBO;
 	GLuint neighbourListSSBO;
-	GLuint prefixIndexCounter;
+	GLuint prefixIndexCounterSSBO;
 	GLuint endIndexNeighbourSSBO;
 
 	Shader* countShader;
 	Shader* reorderShader;
-	Shader* generateNeighbourListShader;
-	Shader* prefixSumShader;
+	Shader* buildNeighbourListShader;
+	Shader* computePrefixSumShader;
 
 	glm::vec3 resolutionVec;
 	GLuint binCount;

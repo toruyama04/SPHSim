@@ -11,7 +11,7 @@ layout(std430, binding = 12) buffer particlesOrderedByBinSSBO {
 };
 
 layout(std430, binding = 11) buffer prefixForBinReorderSSBO {
-    uint prefixSum[];
+    uint prefixForBinReorder[];
 };
 
 layout(std430, binding = 13) buffer flatNeighborsSSBO {
@@ -52,8 +52,8 @@ void main() {
             continue;
         }
 
-        uint neighborBinStart = prefixSum[neighborBinIndex];
-        uint neighborBinEnd = prefixSum[neighborBinIndex + 1];
+        uint neighborBinStart = prefixForBinReorder[neighborBinIndex];
+        uint neighborBinEnd = prefixForBinReorder[neighborBinIndex + 1];
 
         // Iterate over all particles in the neighboring bin
         for (uint j = neighborBinStart; j < neighborBinEnd; ++j) {
@@ -73,6 +73,5 @@ void main() {
             }
         }
     }
-
     endIndex[idx] = neighborListStart + neighborCount;
 }

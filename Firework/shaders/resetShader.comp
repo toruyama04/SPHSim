@@ -6,14 +6,6 @@ layout(std430, binding = 5) buffer ForcesSSBO {
     vec4 forces[];
 };
 
-layout(std430, binding = 15) buffer prefixIndexCounter {
-    uint indexCount[];
-};
-
-layout(std430, binding = 9) buffer particleNumPerBinSSBO {
-    uint bins[];
-};
-
 layout(std430, binding = 14) buffer neighborListSSBO {
     uint neighborList[];
 };
@@ -23,17 +15,17 @@ layout(std430, binding = 16) buffer EndIndex {
 };
 
 
-uniform uint particleNum;
+uniform uint totalParticles;
 uniform uint maxNeighbours;
+uniform uint fluidParticleNum;
 
 void main()
 {
     uint idx = gl_GlobalInvocationID.x;
-    if (idx >= particleNum) return;
+    if (idx >= totalParticles) return;
 
-    forces[idx] = vec4(0.0);
-    indexCount[idx] = 0;
-    bins[idx] = 0;
+    if (idx < fluidParticleNum)
+        forces[idx] = vec4(0.0);
     
     // resetting the neighbourlist 
     uint start = idx * maxNeighbours;

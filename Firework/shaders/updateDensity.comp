@@ -21,15 +21,17 @@ layout(std430, binding = 16) buffer EndIndex {
 uniform float h;
 uniform float h3;
 uniform float mass;
-uniform uint particleNum;
+uniform uint fluidParticleNum;
+uniform uint boundaryParticleNum;
 uniform uint maxNeighbourNum;
 uniform float sigma;
 
 
 void main()
 {
-    uint idx = gl_GlobalInvocationID.x;
-    if (idx >= particleNum) return;
+    // skip the boundary particles, we index from the first fluid particle
+    uint idx = gl_GlobalInvocationID.x + boundaryParticleNum;
+    if (idx >= fluidParticleNum + boundaryParticleNum) return;
 
     uint startIndex = idx * maxNeighbourNum;
     uint endIndex = endIndices[idx];
@@ -42,9 +44,10 @@ void main()
     {
         uint ni = neighbourList[i];
         vec3 x_j = positions[ni].xyz;
-        float r = abs(distance(x_i, x_j));
+
+        float r = distance(x_i, x_j);
         
-        float q = r / h;
+        float q = clamp(r / h, 0.0, 1.0);
         float w1 = 6.0 * (q * q * q - q * q) + 1.0;
         float w2 = 2.0 * pow(1.0 - q, 3.0);
 
@@ -56,5 +59,6 @@ void main()
         w *= step(q, 1.0001);
         densitySum += w * mass;
     }
-    densities[idx] = densitySum;
+    // write back to densities, buffer is only for fluid particles, so dont skip
+    densities[gl_GlobalInvocationID.x] = densitySum;
 }

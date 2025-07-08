@@ -32,7 +32,9 @@ layout(std430, binding = 16) buffer EndIndex {
 
 uniform float kviscosity;
 uniform float h;
-uniform uint particleNum;
+uniform uint fluidParticleNum;
+uniform uint boundaryParticleNum;
+uniform float restDensity;
 uniform uint maxNeighbourNum;
 uniform float mass;
 uniform float kernelg;
@@ -41,8 +43,8 @@ uniform vec3 gravity;
 
 void main()
 {
-    uint idx = gl_GlobalInvocationID.x;
-    if (idx >= particleNum) return;
+    uint idx = gl_GlobalInvocationID.x + boundaryParticleNum;
+    if (idx >= fluidParticleNum + boundaryParticleNum) return;
 
     vec3 x_i = positions[idx].xyz;
     vec3 v_i = velocity[idx].xyz;
@@ -58,7 +60,8 @@ void main()
 
         vec3 x_j = positions[nI].xyz;
         vec3 v_j = velocity[nI].xyz;
-        float d_j = densities[nI];
+
+        float d_j = (nI < boundaryParticleNum) ? restDensity : densities[nI];
 
         vec3 v_diff = v_j - v_i;
         vec3 r_ij = x_i - x_j;
@@ -82,5 +85,5 @@ void main()
 
     vec3 viscosityForce = mass * kviscosity * (10.0 * lapv); // 2(d+2) with d=3
     vec3 v_star = v_i + (dt / mass) * (viscosityForce + gravity);
-    predictedVelocity[idx].xyz = v_star;
+    predictedVelocity[gl_GlobalInvocationID.x].xyz = v_star;
 }

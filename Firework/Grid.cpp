@@ -9,7 +9,7 @@ Grid::Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint particleNum,
     glGenBuffers(1, &prefixForBinReorderSSBO);
     glGenBuffers(1, &particlesOrderedByBinSSBO);
     glGenBuffers(1, &flatNeighboursSSBO);
-    glGenBuffers(1, &prefixIndexCounter);
+    glGenBuffers(1, &prefixIndexCounterSSBO);
     glGenBuffers(1, &neighbourListSSBO);
     glGenBuffers(1, &endIndexNeighbourSSBO);
 
@@ -66,7 +66,7 @@ Grid::Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint particleNum,
     }
 
     glNamedBufferData(flatNeighboursSSBO, sizeof(GLuint) * flatNeighbors.size(), flatNeighbors.data(), GL_STATIC_DRAW);
-    glNamedBufferData(prefixIndexCounter, sizeof(GLuint) * binCount, initialBinValue.data(), GL_DYNAMIC_DRAW);
+    glNamedBufferData(prefixIndexCounterSSBO, sizeof(GLuint) * binCount, initialBinValue.data(), GL_DYNAMIC_DRAW);
     glNamedBufferData(neighbourListSSBO, sizeof(GLuint) * particleNum * maxNeighbourNum, nullptr, GL_DYNAMIC_DRAW);
     glNamedBufferData(endIndexNeighbourSSBO, sizeof(GLuint) * particleNum, initialParticleValue.data(), GL_DYNAMIC_DRAW);
 
@@ -77,25 +77,28 @@ Grid::Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint particleNum,
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 12, particlesOrderedByBinSSBO);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 13, flatNeighboursSSBO);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 14, neighbourListSSBO);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 15, prefixIndexCounter);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 15, prefixIndexCounterSSBO);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 16, endIndexNeighbourSSBO);
 
     countShader = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/count.comp");
     reorderShader = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/reorder.comp");
-    generateNeighbourListShader = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/buildNeighbourList.comp");
-    prefixSumShader = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/computePrefixSum.comp");
+    buildNeighbourListShader = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/buildNeighbourList.comp");
+    computePrefixSumShader = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/computePrefixSum.comp");
 }
 
 Grid::~Grid()
 {
     delete countShader;
     delete reorderShader;
-    delete generateNeighbourListShader;
+    delete buildNeighbourListShader;
+    delete computePrefixSumShader;
 }
 
 void Grid::build(GLuint particleNum, float searchRadius) {
     // we dispatch 256 threads in x for a compute shader over all particles
     GLuint groupNum = (particleNum + 255) / 256;
+
+    glClearNamedBufferData(particleNumPerBinSSBO, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
 
     // setting bin index for each particle, counting particles per bin
     countShader->use();
@@ -125,9 +128,9 @@ void Grid::build(GLuint particleNum, float searchRadius) {
     }
 
     // Computing prefix indices on GPU
-    prefixSumShader->use();
-    prefixSumShader->setUInt("binCount", binCount);
-    prefixSumShader->setUInt("particleNum", particleNum);
+    computePrefixSumShader->use();
+    computePrefixSumShader->setUInt("binCount", binCount);
+    computePrefixSumShader->setUInt("particleNum", particleNum);
     glDispatchCompute(1, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
@@ -140,10 +143,10 @@ void Grid::build(GLuint particleNum, float searchRadius) {
     /** Build the neighbor list
     *    the idea is to only search for nearby particles in the surrounding 27 bins 
     */
-    generateNeighbourListShader->use();
-    generateNeighbourListShader->setFloat("searchRadius", searchRadius);
-    generateNeighbourListShader->setUInt("maxNeighborsPerParticle", maxNeighbourNum);
-    generateNeighbourListShader->setUInt("particleNum", particleNum);
+    buildNeighbourListShader->use();
+    buildNeighbourListShader->setFloat("searchRadius", searchRadius);
+    buildNeighbourListShader->setUInt("maxNeighborsPerParticle", maxNeighbourNum);
+    buildNeighbourListShader->setUInt("particleNum", particleNum);
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }

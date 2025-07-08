@@ -23,13 +23,14 @@ layout(std430, binding = 6) buffer DensitySSBO {
 };
 
 uniform float dt;
-uniform uint particleNum;
+uniform uint fluidParticleNum;
+uniform uint boundaryParticleNum;
 uniform float mass;
 
 void main()
 {
-    uint idx = gl_GlobalInvocationID.x;
-    if (idx >= particleNum) return;
+    uint idx = gl_GlobalInvocationID.x + boundaryParticleNum;
+    if (idx >= fluidParticleNum + boundaryParticleNum) return;
     
     vec3 vel = predVelocity[idx].xyz + (dt / mass) * forces[idx].xyz;
     vec3 pos = positions[idx].xyz + dt * vel;

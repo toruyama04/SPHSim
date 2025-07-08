@@ -10,12 +10,12 @@ layout(std430, binding = 12) buffer particlesOrderedByBinSSBO {
     uint particlesOrderedByBin[];
 };
 
-layout(std430, binding = 15) buffer prefixIndexCounter {
-    uint prefixCounter[];
+layout(std430, binding = 15) buffer prefixIndexCounterSSBO {
+    uint prefixIndexCounter[];
 };
 
 layout(std430, binding = 11) buffer prefixForBinReorderSSBO {
-    uint prefixSum[];
+    uint prefixForBinReorder[];
 };
 
 uniform uint particleNum;
@@ -29,7 +29,7 @@ void main() {
     // atomicAdd returns value before increasing it
     // we use the buffer as a counter so that each particle is placed
     // in its correct position 
-    uint posInOrderedArray = atomicAdd(prefixCounter[binIndex], 1);
+    uint posInOrderedArray = atomicAdd(prefixIndexCounter[binIndex], 1);
 
-    particlesOrderedByBin[prefixSum[binIndex] + posInOrderedArray] = idx;
+    particlesOrderedByBin[prefixForBinReorder[binIndex] + posInOrderedArray] = idx;
 }
