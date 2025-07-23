@@ -6,24 +6,24 @@ layout(std430, binding = 0) buffer Positions {
     vec4 positions[];
 };
 
-layout(std430, binding = 9) buffer particleNumPerBinSSBO {
+layout(std430, binding = 5) buffer particleNumPerBinSSBO {
     uint particleNumPerBin[];
 };
 
-layout(std430, binding = 10) buffer binIndexForParticleSSBO {
+layout(std430, binding = 6) buffer binIndexForParticleSSBO {
     uint binIndexForParticle[];
 };
 
 uniform vec3 gridResolution;
 uniform vec3 gridOrigin;
 uniform float gridSpacing;
-uniform uint particleNum;
+uniform uint totalParticles;
 
 
 void main()
 {   
     uint idx = gl_GlobalInvocationID.x;
-    if (idx >= particleNum) return;
+    if (idx >= totalParticles) return;
 
     vec3 pos = positions[idx].xyz;
     vec3 gridPos = (pos - gridOrigin) / gridSpacing;
@@ -36,7 +36,8 @@ void main()
         gridPosy >= 0.0 && gridPosy < gridResolution.y &&
         gridPosz >= 0.0 && gridPosz < gridResolution.z) {
 
-        uint binIndex = uint(gridPosx + (gridPosy * gridResolution.x) + (gridPosz * gridResolution.x * gridResolution.y));
+        uint binIndex = uint(gridPosx + (gridPosy * gridResolution.x) + 
+            (gridPosz * gridResolution.x * gridResolution.y));
 
         binIndexForParticle[idx] = binIndex;
 

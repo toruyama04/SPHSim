@@ -102,7 +102,7 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
     last_y = static_cast<double>(screen_height) / 2.0f;
 
     // Creating camera (from learnopengl.com)
-    camera = new Camera(glm::vec3(5.0f, 4.0f, 25.0f));
+    camera = new Camera(glm::vec3(2.0f, 2.0f, 12.0f));
     if (camera == nullptr) {
         std::cerr << "Failed to create camera\n";
         glfwDestroyWindow(window);
@@ -113,8 +113,8 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
 
 Application::~Application()
 {
-    std::cout << "Deleting camera\n";
     delete camera;
+    delete sim;
     glfwDestroyWindow(window);
     glfwTerminate();
 }
@@ -149,7 +149,6 @@ void Application::run()
 
         sim->render(view, projection);
 
-        // displayFPS();
         glfwSwapBuffers(window);
 	}
 }
@@ -191,11 +190,11 @@ void Application::processInput()
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera->ProcessKeyboard(FORWARD, 0.0005f);
+        camera->ProcessKeyboard(FORWARD, 0.001f);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera->ProcessKeyboard(BACKWARD, 0.0005f);
+        camera->ProcessKeyboard(BACKWARD, 0.001f);
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera->ProcessKeyboard(LEFT, 0.0005f);
+        camera->ProcessKeyboard(LEFT, 0.001f);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera->ProcessKeyboard(RIGHT, 0.0005f);
+        camera->ProcessKeyboard(RIGHT, 0.001f);
 }

@@ -65,11 +65,8 @@
     <None Include="shaders\buildNeighbourList.comp" />
     <None Include="shaders\updateDensity.comp" />
     <None Include="shaders\updateViscosity.comp" />
-    <None Include="shaders\computePressure.comp" />
     <None Include="shaders\updatePressure.comp" />
     <None Include="shaders\timeIntegration.comp" />
-    <None Include="shaders\resetShader.comp" />
-    <None Include="shaders\updateVelocity.comp" />
     <None Include="shaders\computePrefixSum.comp" />
   </ItemGroup>
 </Project>

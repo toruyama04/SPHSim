@@ -6,72 +6,73 @@ layout(std430, binding = 0) buffer positionsSSBO {
     vec4 positions[];
 };
 
-layout(std430, binding = 12) buffer particlesOrderedByBinSSBO {
+layout(std430, binding = 8) buffer particlesOrderedByBinSSBO {
     uint particlesOrderedByBin[];
 };
 
-layout(std430, binding = 11) buffer prefixForBinReorderSSBO {
+layout(std430, binding = 7) buffer prefixForBinReorderSSBO {
     uint prefixForBinReorder[];
 };
 
-layout(std430, binding = 13) buffer flatNeighborsSSBO {
-    uint flatNeighbors[];
+layout(std430, binding = 12) buffer flatNeighboursSSBO {
+    uint flatNeighbours[];
 };
 
-layout(std430, binding = 14) buffer neighborListSSBO {
-    uint neighborList[];
+layout(std430, binding = 10) buffer neighbourListSSBO {
+    uint neighbourList[];
 };
 
-layout(std430, binding = 10) buffer binIndexForParticleSSBO {
+layout(std430, binding = 6) buffer binIndexForParticleSSBO {
     uint binIndexForParticle[];
 };
 
-layout(std430, binding = 16) buffer endIndexBuffer {
+layout(std430, binding = 11) buffer endIndexBuffer {
     uint endIndex[];
 };
 
 uniform float searchRadius;
-uniform uint maxNeighborsPerParticle;
-uniform uint particleNum;
+uniform uint maxNeighboursPerParticle;
+uniform uint fluidParticles;
+uniform uint totalParticles;
+uniform uint boundaryParticleNum;
 
 
 void main() {
-    uint idx = gl_GlobalInvocationID.x;
-    if (idx >= particleNum) return;
+    uint idx = gl_GlobalInvocationID.x + boundaryParticleNum;
+    uint og = gl_GlobalInvocationID.x;
+    if (idx >= totalParticles) return;
 
     vec3 particlePos = positions[idx].xyz;
     uint binIndex = binIndexForParticle[idx];
 
-    uint neighborListStart = idx * maxNeighborsPerParticle;
-    uint neighborCount = 0;
+    uint neighbourListStart = og * maxNeighboursPerParticle;
+    uint neighbourCount = 0;
 
     for (uint i = 0; i < 27; ++i) {
-        uint neighborBinIndex = flatNeighbors[binIndex * 27 + i];
+        uint neighbourBinIndex = flatNeighbours[binIndex * 27 + i];
 
-        if (neighborBinIndex == 111111) {
-            continue;
-        }
+        if (neighbourBinIndex == 111111) continue;
 
-        uint neighborBinStart = prefixForBinReorder[neighborBinIndex];
-        uint neighborBinEnd = prefixForBinReorder[neighborBinIndex + 1];
+        uint neighbourBinStart = prefixForBinReorder[neighbourBinIndex];
+        uint neighbourBinEnd = prefixForBinReorder[neighbourBinIndex + 1];
 
         // Iterate over all particles in the neighboring bin
-        for (uint j = neighborBinStart; j < neighborBinEnd; ++j) {
+        for (uint j = neighbourBinStart; j < neighbourBinEnd; ++j) {
             uint nIndex = particlesOrderedByBin[j];
-            vec3 neighborPos = positions[nIndex].xyz;
-            float dist = dot(particlePos - neighborPos, particlePos - neighborPos);
+            vec3 neighbourPos = positions[nIndex].xyz;
+            float dist = dot(particlePos - neighbourPos, particlePos - neighbourPos);
 
-            if (dist < (searchRadius * 2.0) * (searchRadius * 2.0)) {
-                neighborList[neighborListStart + neighborCount] = nIndex;
-                neighborCount++;
+            if (dist < searchRadius * searchRadius) {
+                neighbourList[neighbourListStart + neighbourCount] = nIndex;
+                neighbourCount++;
 
                 // exit early if we reach maxNeighbourCount
-                if (neighborCount >= maxNeighborsPerParticle) {
-                    endIndex[idx] = neighborListStart + neighborCount;
+                if (neighbourCount >= maxNeighboursPerParticle) {
+                    endIndex[og] = neighbourListStart + neighbourCount;
                     return;
                 }
             }
         }
     }
-    endIndex[idx] = neighborListStart + neighborCount;
+    endIndex[og] = neighbourListStart + neighbourCount;
 }

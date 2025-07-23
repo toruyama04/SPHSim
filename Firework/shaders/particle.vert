@@ -8,9 +8,6 @@ layout(std430, binding = 0) buffer Positions {
     vec4 positions[];
 };
  
-layout(std430, binding = 1) buffer Velocities {
-    vec4 velocity[];
-};
 
 uniform mat4 model;
 uniform mat4 view;
@@ -25,5 +22,5 @@ void main() {
 
     gl_Position = projection * view * model * vec4(pos, 1.0);
 
-    alpha = positions[gl_InstanceID].w / velocity[gl_InstanceID].w;
+    alpha = positions[gl_InstanceID].w;
 }

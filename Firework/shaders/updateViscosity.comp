@@ -14,24 +14,21 @@ layout(std430, binding = 2) buffer PredictedVelocity {
     vec4 predictedVelocity[];
 };
 
-layout(std430, binding = 5) buffer ForcesSSBO {
-    vec4 forces[];
-};
-
-layout(std430, binding = 6) buffer DensitySSBO {
+layout(std430, binding = 4) buffer DensitySSBO {
     float densities[];
 };
 
-layout(std430, binding = 14) buffer NeighbourListSSBO {
+layout(std430, binding = 10) buffer NeighbourListSSBO {
     uint neighbourList[];
 };
 
-layout(std430, binding = 16) buffer EndIndex {
+layout(std430, binding = 11) buffer EndIndex {
     uint endIndices[];
 };
 
 uniform float kviscosity;
 uniform float h;
+uniform uint totalParticles;
 uniform uint fluidParticleNum;
 uniform uint boundaryParticleNum;
 uniform float restDensity;
@@ -43,11 +40,12 @@ uniform vec3 gravity;
 
 void main()
 {
-    uint idx = gl_GlobalInvocationID.x + boundaryParticleNum;
-    if (idx >= fluidParticleNum + boundaryParticleNum) return;
+    uint idx = gl_GlobalInvocationID.x;
+    uint totalidx = gl_GlobalInvocationID.x + boundaryParticleNum;
+    if (idx >= fluidParticleNum) return;
 
-    vec3 x_i = positions[idx].xyz;
-    vec3 v_i = velocity[idx].xyz;
+    vec3 x_i = positions[totalidx].xyz;
+    vec3 v_i = velocity[totalidx].xyz;
 
     uint startIndex = idx * maxNeighbourNum;
     uint endIndex = endIndices[idx];
@@ -56,12 +54,13 @@ void main()
 
     for (uint i = startIndex; i < endIndex; ++i)
     {
-        uint nI = neighbourList[i];
+        uint neighbour_i = neighbourList[i];
 
-        vec3 x_j = positions[nI].xyz;
-        vec3 v_j = velocity[nI].xyz;
+        vec3 x_j = positions[neighbour_i].xyz;
+        vec3 v_j = velocity[neighbour_i].xyz;
 
-        float d_j = (nI < boundaryParticleNum) ? restDensity : densities[nI];
+        // if particle is boundary, we set its density as rest density
+        float d_j = (neighbour_i < boundaryParticleNum) ? restDensity : densities[neighbour_i - boundaryParticleNum];
 
         vec3 v_diff = v_j - v_i;
         vec3 r_ij = x_i - x_j;
@@ -83,7 +82,7 @@ void main()
         lapv += (mass / d_j) * (dot(v_diff, r_ij) / (r2 + 1e-6)) * gradW;
     }
 
-    vec3 viscosityForce = mass * kviscosity * (10.0 * lapv); // 2(d+2) with d=3
+    vec3 viscosityForce = mass * kviscosity * (10.0 * lapv);
     vec3 v_star = v_i + (dt / mass) * (viscosityForce + gravity);
-    predictedVelocity[gl_GlobalInvocationID.x].xyz = v_star;
+    predictedVelocity[idx].xyz = v_star;
 }

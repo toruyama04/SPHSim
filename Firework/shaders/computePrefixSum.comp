@@ -2,15 +2,15 @@
 
 layout(local_size_x = 1) in;
 
-layout(std430, binding = 9) buffer particleNumPerBinSSBO {
+layout(std430, binding = 5) buffer particleNumPerBinSSBO {
     uint particleNumPerBin[];
 };
 
-layout(std430, binding = 11) buffer prefixForBinReorderSSBO {
+layout(std430, binding = 7) buffer prefixForBinReorderSSBO {
     uint prefixForBinReorder[];
 };
 
-layout(std430, binding = 15) buffer prefixIndexCounterSSBO {
+layout(std430, binding = 9) buffer prefixIndexCounterSSBO {
     uint prefixIndexCounter[];
 };
 

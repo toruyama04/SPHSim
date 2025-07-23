@@ -166,13 +166,10 @@
     <None Include="shaders\reorder.comp" />
     <None Include="shaders\particle.frag" />
     <None Include="shaders\particle.vert" />
-    <None Include="shaders\resetShader.comp" />
     <None Include="shaders\timeIntegration.comp" />
     <None Include="shaders\updateDensity.comp" />
-    <None Include="shaders\computePressure.comp" />
     <None Include="shaders\updatePressure.comp" />
     <None Include="shaders\updateViscosity.comp" />
-    <None Include="shaders\updateVelocity.comp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

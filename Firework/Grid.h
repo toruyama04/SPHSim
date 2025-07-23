@@ -7,17 +7,17 @@
 class Grid
 {
 public:
-	Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint particleNum, 
+	Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint totalParticles, GLuint fluid, 
 		GLuint maxNeighbourNum, float gridSpacing);
 	~Grid();
-	void build(GLuint particleNum, float searchRadius);
+	void build(float searchRadius);
 
 private:
 
 	GLuint particleNumPerBinSSBO;
-	GLuint binIndexForParticleSSBO;
-	GLuint prefixForBinReorderSSBO;
 	GLuint particlesOrderedByBinSSBO;
+	GLuint prefixForBinReorderSSBO;
+	GLuint binIndexForParticleSSBO;
 	GLuint flatNeighboursSSBO;
 	GLuint neighbourListSSBO;
 	GLuint prefixIndexCounterSSBO;
@@ -33,4 +33,7 @@ private:
 	GLuint maxNeighbourNum;
 	float gridSpacing;
 	glm::vec3 gridOrigin;
+	GLuint totalParticles;
+	GLuint fluidParticles;
+	GLuint boundaryParticleNum;
 };

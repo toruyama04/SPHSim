@@ -1,7 +1,7 @@
 ﻿#include "Grid.h"
 #include <vector>
 
-Grid::Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint particleNum,
+Grid::Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint totalParticles, GLuint fluidParticles,
     GLuint maxNeighbourNum, float gridSpacing)
 {
     glGenBuffers(1, &particleNumPerBinSSBO);
@@ -13,51 +13,80 @@ Grid::Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint particleNum,
     glGenBuffers(1, &neighbourListSSBO);
     glGenBuffers(1, &endIndexNeighbourSSBO);
 
-    // should precompute instead of fixed value
-    // GLuint resolution = (extents.x - gridOrigin.x) / gridSpacing;
-    GLuint resolution = 25;
+    GLuint resolution = GLuint((extents.x - gridOrigin.x) / gridSpacing);
     binCount = resolution * resolution * resolution;
     resolutionVec = glm::vec3(resolution, resolution, resolution);
     this->maxNeighbourNum = maxNeighbourNum;
     this->gridSpacing = gridSpacing;
     this->gridOrigin = gridOrigin;
+    this->totalParticles = totalParticles;
+    this->fluidParticles = fluidParticles;
+    this->boundaryParticleNum = totalParticles - fluidParticles;
 
-    std::vector<GLuint> initialBinValue(binCount, 0);
-    std::vector<GLuint> initialParticleValue(particleNum, 0);
-    std::vector<GLuint> initialN(particleNum * maxNeighbourNum, 0);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, particleNumPerBinSSBO);
+    std::vector<GLuint> defaultParticleNumPerBin(binCount, 0);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * binCount, defaultParticleNumPerBin.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, particleNumPerBinSSBO);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, binIndexForParticleSSBO);
+    std::vector<GLuint> defaultBinIndexPerParticle(totalParticles, 0);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * totalParticles, defaultBinIndexPerParticle.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, binIndexForParticleSSBO);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, prefixForBinReorderSSBO);
     std::vector<GLuint> initialPrefix(binCount + 1, 0);
-    initialPrefix[binCount] = particleNum;
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * (binCount + 1), initialPrefix.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, prefixForBinReorderSSBO);
 
-    // Initialize buffers with data
-    glNamedBufferData(particleNumPerBinSSBO, sizeof(GLuint) * binCount, initialBinValue.data(), GL_DYNAMIC_DRAW);
-    glNamedBufferData(binIndexForParticleSSBO, sizeof(GLuint) * particleNum, nullptr, GL_DYNAMIC_DRAW);
-    glNamedBufferData(prefixForBinReorderSSBO, sizeof(GLuint) * (binCount + 1), initialPrefix.data(), GL_DYNAMIC_DRAW);
-    glNamedBufferData(particlesOrderedByBinSSBO, sizeof(GLuint) * particleNum, nullptr, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, particlesOrderedByBinSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * totalParticles, defaultBinIndexPerParticle.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, particlesOrderedByBinSSBO);
 
-    // computing the neighbouring bin indices for all bins
-    // const GLuint NO_NEIGHBOR = std::numeric_limits<GLuint>::max();
-    std::vector<GLuint> flatNeighbors(binCount * 27, 111111);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, prefixIndexCounterSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * binCount, defaultParticleNumPerBin.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 9, prefixIndexCounterSSBO);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, neighbourListSSBO);
+    std::vector<GLuint> defaultNeighbourList(fluidParticles * maxNeighbourNum, 0);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * fluidParticles * maxNeighbourNum, defaultNeighbourList.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, neighbourListSSBO);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, endIndexNeighbourSSBO);
+    std::vector<GLuint> defaultEndIndex(fluidParticles, 0);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * fluidParticles, defaultEndIndex.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 11, endIndexNeighbourSSBO);
+
+    // computing the neighbouring bin indices for all bins for flatNeighbours - only need to compute once
+    std::vector<GLuint> flatNeighbours(binCount * 27, 111111);
+
     for (unsigned int x = 0; x < resolution; ++x) {
         for (unsigned int y = 0; y < resolution; ++y) {
             for (unsigned int z = 0; z < resolution; ++z) {
-                int baseIndex = (x + (y * resolution) + (z * resolution * resolution)) * 27;
-                int index = 0;
+
+                int binIndex = x + y * resolution + z * resolution * resolution;
+                int neighbourBase = binIndex * 27;
+                int n = 0;
+
                 for (int dz = -1; dz <= 1; ++dz) {
                     for (int dy = -1; dy <= 1; ++dy) {
                         for (int dx = -1; dx <= 1; ++dx) {
-                            unsigned int nx = x + dx;
-                            unsigned int ny = y + dy;
-                            unsigned int nz = z + dz;
-                            if (nx >= 0 && nx < resolution &&
-                                ny >= 0 && ny < resolution &&
-                                nz >= 0 && nz < resolution) {
-                                GLuint neighborIndex = nx + (ny * resolution) + (nz * resolution * resolution);
-                                flatNeighbors[baseIndex + index] = neighborIndex;
+
+                            int nx = static_cast<int>(x) + dx;
+                            int ny = static_cast<int>(y) + dy;
+                            int nz = static_cast<int>(z) + dz;
+
+                            if (nx >= 0 && nx < static_cast<int>(resolution) &&
+                                ny >= 0 && ny < static_cast<int>(resolution) &&
+                                nz >= 0 && nz < static_cast<int>(resolution)) {
+
+                                GLuint neighbourIdx = nx + ny * resolution + nz * resolution * resolution;
+                                flatNeighbours[neighbourBase + n] = neighbourIdx;
                             }
                             else {
-                                flatNeighbors[baseIndex + index] = 111111;
+                                flatNeighbours[neighbourBase + n] = 111111;
                             }
-                            ++index;
+
+                            ++n;
                         }
                     }
                 }
@@ -65,20 +94,9 @@ Grid::Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint particleNum,
         }
     }
 
-    glNamedBufferData(flatNeighboursSSBO, sizeof(GLuint) * flatNeighbors.size(), flatNeighbors.data(), GL_STATIC_DRAW);
-    glNamedBufferData(prefixIndexCounterSSBO, sizeof(GLuint) * binCount, initialBinValue.data(), GL_DYNAMIC_DRAW);
-    glNamedBufferData(neighbourListSSBO, sizeof(GLuint) * particleNum * maxNeighbourNum, nullptr, GL_DYNAMIC_DRAW);
-    glNamedBufferData(endIndexNeighbourSSBO, sizeof(GLuint) * particleNum, initialParticleValue.data(), GL_DYNAMIC_DRAW);
-
-    // Bind buffers to binding points
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 9, particleNumPerBinSSBO);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, binIndexForParticleSSBO);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 11, prefixForBinReorderSSBO);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 12, particlesOrderedByBinSSBO);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 13, flatNeighboursSSBO);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 14, neighbourListSSBO);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 15, prefixIndexCounterSSBO);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 16, endIndexNeighbourSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, flatNeighboursSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * flatNeighbours.size(), flatNeighbours.data(), GL_STATIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 12, flatNeighboursSSBO);
 
     countShader = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/count.comp");
     reorderShader = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/reorder.comp");
@@ -94,9 +112,10 @@ Grid::~Grid()
     delete computePrefixSumShader;
 }
 
-void Grid::build(GLuint particleNum, float searchRadius) {
+void Grid::build(float searchRadius) {
     // we dispatch 256 threads in x for a compute shader over all particles
-    GLuint groupNum = (particleNum + 255) / 256;
+    GLuint groupNumAll = (totalParticles + 255) / 256;
+    GLuint groupNumFluid = (fluidParticles + 255) / 256;
 
     glClearNamedBufferData(particleNumPerBinSSBO, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
 
@@ -105,48 +124,32 @@ void Grid::build(GLuint particleNum, float searchRadius) {
     countShader->setVec3("gridResolution", resolutionVec);
     countShader->setVec3("gridOrigin", gridOrigin);
     countShader->setFloat("gridSpacing", gridSpacing);
-    countShader->setUInt("particleNum", particleNum);
-    glDispatchCompute(groupNum, 1, 1);
+    countShader->setUInt("totalParticles", totalParticles);
+    glDispatchCompute(groupNumAll, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-    // On CPU
-    {
-        std::vector<GLuint> particleNumPerBin(binCount);
-        glGetNamedBufferSubData(particleNumPerBinSSBO, 0, binCount * sizeof(GLuint), particleNumPerBin.data());
-
-        // Compute prefix sum on CPU
-        std::vector<GLuint> prefixSum(binCount + 1, 0);
-        GLuint sum = 0;
-        for (GLuint i = 0; i < binCount; ++i) {
-            prefixSum[i] = sum;
-            sum += particleNumPerBin[i];
-        }
-        prefixSum[binCount] = particleNum;
-        // Write prefix sum back to GPU
-        glNamedBufferSubData(prefixForBinReorderSSBO, 0, (binCount + 1) * sizeof(GLuint), prefixSum.data());
-        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-    }
-
-    // Computing prefix indices on GPU
+    // Computing prefix indices on GPU - also retting prefixCounter
     computePrefixSumShader->use();
     computePrefixSumShader->setUInt("binCount", binCount);
-    computePrefixSumShader->setUInt("particleNum", particleNum);
+    computePrefixSumShader->setUInt("particleNum", totalParticles);
     glDispatchCompute(1, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     // creating a particlesOrderedByBin buffer using prefix sum 
     reorderShader->use();
-    reorderShader->setUInt("particleNum", particleNum);
-    glDispatchCompute(groupNum, 1, 1);
+    reorderShader->setUInt("particleNum", totalParticles);
+    glDispatchCompute(groupNumAll, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-    /** Build the neighbor list
+    /** Build the neighbour list
     *    the idea is to only search for nearby particles in the surrounding 27 bins 
     */
     buildNeighbourListShader->use();
     buildNeighbourListShader->setFloat("searchRadius", searchRadius);
-    buildNeighbourListShader->setUInt("maxNeighborsPerParticle", maxNeighbourNum);
-    buildNeighbourListShader->setUInt("particleNum", particleNum);
-    glDispatchCompute(groupNum, 1, 1);
+    buildNeighbourListShader->setUInt("maxNeighboursPerParticle", maxNeighbourNum);
+    buildNeighbourListShader->setUInt("fluidParticles", fluidParticles);
+    buildNeighbourListShader->setUInt("boundaryParticleNum", boundaryParticleNum);
+    buildNeighbourListShader->setUInt("totalParticles", totalParticles);
+    glDispatchCompute(groupNumFluid, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }

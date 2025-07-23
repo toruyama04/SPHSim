@@ -2,11 +2,11 @@
 
 layout(local_size_x = 256) in;
 
-layout(std430, binding = 14) buffer NeighbourListSSBO {
+layout(std430, binding = 10) buffer NeighbourListSSBO {
     uint neighbourList[];
 };
 
-layout(std430, binding = 16) buffer EndIndex {
+layout(std430, binding = 11) buffer EndIndex {
     uint endIndices[];
 };
 
@@ -14,15 +14,11 @@ layout(std430, binding = 0) buffer Positions {
     vec4 positions[];
 };
 
-layout(std430, binding = 7) buffer PressureSSBO {
-    float pressures[]; 
-};
-
-layout(std430, binding = 5) buffer ForcesSSBO {
+layout(std430, binding = 3) buffer ForcesSSBO {
     vec4 forces[];
 };
 
-layout(std430, binding = 6) buffer DensitySSBO {
+layout(std430, binding = 4) buffer DensitySSBO {
     float densities[];
 };
 
@@ -31,8 +27,9 @@ uniform float restDensity;
 uniform float h;
 uniform float k1;
 uniform float k2;
-uniform uint fluidParticleNum;
+uniform uint totalParticles;
 uniform uint boundaryParticleNum;
+uniform uint fluidParticleNum;
 uniform uint maxNeighbourNum;
 uniform float kernelg;
 uniform float mass;
@@ -40,15 +37,17 @@ uniform float mass;
 
 void main()
 {
-    uint idx = gl_GlobalInvocationID.x + boundaryParticleNum;
-    if (idx >= fluidParticleNum + boundaryParticleNum) return;
+    uint idx = gl_GlobalInvocationID.x;
+    uint totalidx = gl_GlobalInvocationID.x + boundaryParticleNum;
+    if (idx >= fluidParticleNum) return;
 
     uint startIndex = idx * maxNeighbourNum;
     uint endIndex = endIndices[idx];
 
-    vec3 x_i = positions[idx].xyz;
+    vec3 x_i = positions[totalidx].xyz;
     float d_i = densities[idx] + 1e-6;
     float p_i = k1 * (pow((d_i / restDensity), k2) - 1.0);
+    p_i = max(p_i, 0.0);
 
     vec3 pressureVal = vec3(0.0);
 
@@ -62,7 +61,7 @@ void main()
 
         if (nI < boundaryParticleNum)
         {
-            d_j = restDensity + 1e-6;
+            d_j = restDensity;
             p_j = p_i;
         }
         else
@@ -87,6 +86,7 @@ void main()
         float pieceWise2 = step(0.5, q) * step(q, 1.0);
         vec3 gradW = (pieceWise1 * w1 + pieceWise2 * w2) * step(q, 1.0001);
 
+        p_j = max(p_j, 0.0);
         float coeff = mass * (p_i / (d_i * d_i) + p_j / (d_j * d_j));
         pressureVal -= coeff * gradW;
     }

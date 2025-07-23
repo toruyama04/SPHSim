@@ -25,14 +25,17 @@ public:
 
 private:
 	Sim* sim = nullptr;
-	float fixedTimeStep = 0.03f;
-	float lastFrame;
-	float accumulator;
+
 	GLFWwindow* window = nullptr;
 	Camera* camera = nullptr;
+	unsigned int screen_width;
+	unsigned int screen_height;
+	
+	// weakly compressible -> C * (h / c + v_max) - could get Sim object to choose timestep
+	float fixedTimeStep = 0.0008f;
+	float lastFrame;
+	float accumulator;
 	double last_x;
 	double last_y;
 	bool first_mouse;
-	unsigned int screen_width;
-	unsigned int screen_height;
 };

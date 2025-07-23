@@ -14,29 +14,28 @@ layout(std430, binding = 2) buffer PredictedVelocity {
     vec4 predVelocity[];
 };
 
-layout(std430, binding = 5) buffer ForcesSSBO {
+layout(std430, binding = 3) buffer ForcesSSBO {
     vec4 forces[];
 };
 
-layout(std430, binding = 6) buffer DensitySSBO {
+layout(std430, binding = 4) buffer DensitySSBO {
     float densities[];
 };
 
 uniform float dt;
-uniform uint fluidParticleNum;
+uniform uint totalParticles;
 uniform uint boundaryParticleNum;
+uniform uint fluidParticleNum;
 uniform float mass;
 
 void main()
 {
-    uint idx = gl_GlobalInvocationID.x + boundaryParticleNum;
-    if (idx >= fluidParticleNum + boundaryParticleNum) return;
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= fluidParticleNum) return;
     
     vec3 vel = predVelocity[idx].xyz + (dt / mass) * forces[idx].xyz;
-    vec3 pos = positions[idx].xyz + dt * vel;
+    vec3 pos = positions[idx + boundaryParticleNum].xyz + dt * vel;
 
-    // reduce lifetime
-
-    positions[idx].xyz = pos;
-    velocity[idx].xyz = vel;
+    positions[idx + boundaryParticleNum].xyz = pos;
+    velocity[idx + boundaryParticleNum].xyz = vel;
 }
