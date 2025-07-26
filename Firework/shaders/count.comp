@@ -42,7 +42,7 @@ void main()
         binIndexForParticle[idx] = binIndex;
 
         atomicAdd(particleNumPerBin[binIndex], 1);
-    } else {
+    } 
+    else
         positions[idx].w = -1.0;
-    }
 }

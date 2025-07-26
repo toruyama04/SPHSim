@@ -26,13 +26,16 @@ layout(std430, binding = 6) buffer binIndexForParticleSSBO {
     uint binIndexForParticle[];
 };
 
-layout(std430, binding = 11) buffer endIndexBuffer {
+layout(std430, binding = 11) buffer endIndexBufferSSBO {
     uint endIndex[];
+};
+
+layout(std430, binding = 13) buffer neighbourBinOffsetSSBO {
+    uint nBinOffset[];
 };
 
 uniform float searchRadius;
 uniform uint maxNeighboursPerParticle;
-uniform uint fluidParticles;
 uniform uint totalParticles;
 uniform uint boundaryParticleNum;
 
@@ -48,31 +51,34 @@ void main() {
     uint neighbourListStart = og * maxNeighboursPerParticle;
     uint neighbourCount = 0;
 
-    for (uint i = 0; i < 27; ++i) {
-        uint neighbourBinIndex = flatNeighbours[binIndex * 27 + i];
+    float searchRadius2 = searchRadius * searchRadius;
 
-        if (neighbourBinIndex == 111111) continue;
+    for (uint binid = nBinOffset[binIndex]; binid < nBinOffset[binIndex + 1]; ++binid) {
+        uint neighbourBinIndex = flatNeighbours[binid];
 
-        uint neighbourBinStart = prefixForBinReorder[neighbourBinIndex];
-        uint neighbourBinEnd = prefixForBinReorder[neighbourBinIndex + 1];
+        uint start = prefixForBinReorder[neighbourBinIndex];
+        uint end   = prefixForBinReorder[neighbourBinIndex + 1];
 
-        // Iterate over all particles in the neighboring bin
-        for (uint j = neighbourBinStart; j < neighbourBinEnd; ++j) {
+        for (uint j = start; j < end; ++j) {
             uint nIndex = particlesOrderedByBin[j];
             vec3 neighbourPos = positions[nIndex].xyz;
-            float dist = dot(particlePos - neighbourPos, particlePos - neighbourPos);
 
-            if (dist < searchRadius * searchRadius) {
+            bool notSelf = (nIndex != idx);
+            float dist2 = dot(particlePos - neighbourPos, particlePos - neighbourPos);
+            bool withinRadius = (dist2 < searchRadius2);
+            bool canAdd = (neighbourCount < maxNeighboursPerParticle);
+
+            if (notSelf && withinRadius && canAdd) {
                 neighbourList[neighbourListStart + neighbourCount] = nIndex;
                 neighbourCount++;
-
-                // exit early if we reach maxNeighbourCount
-                if (neighbourCount >= maxNeighboursPerParticle) {
-                    endIndex[og] = neighbourListStart + neighbourCount;
-                    return;
-                }
             }
+
+            if (!canAdd) break;
         }
+
+        if (neighbourCount >= maxNeighboursPerParticle) break;
     }
-    endIndex[og] = neighbourListStart + neighbourCount;
+
+    endIndex[og] = neighbourCount;
 }
+

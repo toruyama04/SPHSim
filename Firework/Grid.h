@@ -22,6 +22,7 @@ private:
 	GLuint neighbourListSSBO;
 	GLuint prefixIndexCounterSSBO;
 	GLuint endIndexNeighbourSSBO;
+	GLuint neighbourBinOffsetSSBO;
 
 	Shader* countShader;
 	Shader* reorderShader;
@@ -34,6 +35,6 @@ private:
 	float gridSpacing;
 	glm::vec3 gridOrigin;
 	GLuint totalParticles;
-	GLuint fluidParticles;
+	GLuint fluidParticleNum;
 	GLuint boundaryParticleNum;
 };

@@ -31,11 +31,12 @@ uniform float mass;
 void main()
 {
     uint idx = gl_GlobalInvocationID.x;
+    uint tidx = gl_GlobalInvocationID.x + boundaryParticleNum;
     if (idx >= fluidParticleNum) return;
     
     vec3 vel = predVelocity[idx].xyz + (dt / mass) * forces[idx].xyz;
-    vec3 pos = positions[idx + boundaryParticleNum].xyz + dt * vel;
+    vec3 pos = positions[tidx].xyz + dt * vel;
 
-    positions[idx + boundaryParticleNum].xyz = pos;
-    velocity[idx + boundaryParticleNum].xyz = vel;
+    positions[tidx].xyz = pos;
+    velocity[tidx].xyz = vel;
 }

@@ -27,8 +27,7 @@ public:
 
 	//void addSim(const glm::vec3& origin, const GLuint particle_num);
 	void addParticleCube(const glm::vec3 origin, float spacing, GLuint particlesPerSide);
-	GLuint addBoundaryParticles(std::vector<glm::vec4>& positions, std::vector<glm::vec4>& velocities,
-		float spacing, int layers);
+	GLuint addBoundaryParticles(std::vector<glm::vec4>& positions, float spacing, int layers);
 
 private:
 	void initBuffers();
@@ -46,13 +45,14 @@ private:
 	GLuint totalParticles;
 	GLuint boundaryParticleNum;
 	GLuint maxNeighbourNum = 50;
-	float targetDensity = 1000.0f;
+	float targetDensity = 750.0f;
 
 	Shader* particleShader;
 	Shader* densityUpdate;
 	Shader* viscosityUpdate;
 	Shader* pressureUpdate;
 	Shader* timeIntegrations;
+	Shader* positionPredict;
 
 	Grid* neighbourGrid;
 
@@ -62,6 +62,6 @@ private:
 	GLuint forcesSSBO;
 	GLuint densitiesSSBO;
 	GLuint drawIndirectBuffer;
-	GLuint predictedVelocitySSBO;
+	GLuint predPositionsSSBO;
 	DrawElementsIndirectCommand cmd;
 };

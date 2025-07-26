@@ -149,7 +149,6 @@
     <ClCompile Include="SPHSim.cpp" />
     <ClCompile Include="Grid.cpp" />
     <ClCompile Include="Shader.cpp" />
-    <ClCompile Include="stb_image.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
@@ -157,7 +156,6 @@
     <ClInclude Include="SPHSim.h" />
     <ClInclude Include="Grid.h" />
     <ClInclude Include="Shader.h" />
-    <ClInclude Include="stb_image.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\computePrefixSum.comp" />

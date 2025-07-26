@@ -18,11 +18,11 @@ layout(std430, binding = 7) buffer prefixForBinReorderSSBO {
     uint prefixForBinReorder[];
 };
 
-uniform uint particleNum;
+uniform uint totalParticles;
 
 void main() {
     uint idx = gl_GlobalInvocationID.x;
-    if (idx >= particleNum) return;
+    if (idx >= totalParticles) return;
 
     uint binIndex = binIndexForParticle[idx];
 

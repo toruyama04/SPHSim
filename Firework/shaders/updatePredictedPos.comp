@@ -1,0 +1,29 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(std430, binding = 0) buffer PositionsSSBO {
+	vec4 positions[];
+};
+
+layout(std430, binding = 1) buffer VelocitiesSSBO {
+	vec4 velocities[];
+};
+
+layout(std430, binding = 2) buffer PredictedPositionsSSBO {
+	vec4 predPositions[];
+};
+
+uniform uint totalParticleNum;
+uniform uint dt;
+
+void main()
+{
+	uint idx = gl_GlobalInvocationID.x;
+	if (idx >= totalParticleNum) return;
+
+	vec3 x_i = positions[idx].xyz;
+	vec3 v_i = velocities[idx].xyz;
+
+	predPositions[idx].xyz = x_i + (v_i * dt);
+}

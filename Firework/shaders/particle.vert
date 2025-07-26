@@ -4,10 +4,10 @@ layout (location = 0) in vec3 aPos;
 
 out float alpha;
 
-layout(std430, binding = 0) buffer Positions {
+layout(std430, binding = 0) buffer PositionsSSBO {
     vec4 positions[];
 };
- 
+
 
 uniform mat4 model;
 uniform mat4 view;

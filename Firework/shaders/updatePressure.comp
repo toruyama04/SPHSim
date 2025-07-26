@@ -10,7 +10,7 @@ layout(std430, binding = 11) buffer EndIndex {
     uint endIndices[];
 };
 
-layout(std430, binding = 0) buffer Positions {
+layout(std430, binding = 13) buffer Positions {
     vec4 positions[];
 };
 
