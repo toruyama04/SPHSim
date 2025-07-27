@@ -102,7 +102,7 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
     last_y = static_cast<double>(screen_height) / 2.0f;
 
     // Creating camera (from learnopengl.com)
-    camera = new Camera(glm::vec3(0.8f, 0.8f, 7.75f));
+    camera = new Camera(glm::vec3(1.5f, 1.5f, 8.75f));
     if (camera == nullptr) {
         std::cerr << "Failed to create camera\n";
         glfwDestroyWindow(window);
@@ -190,11 +190,11 @@ void Application::processInput()
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera->ProcessKeyboard(FORWARD, 0.001f);
+        camera->ProcessKeyboard(FORWARD, 0.0005f);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera->ProcessKeyboard(BACKWARD, 0.001f);
+        camera->ProcessKeyboard(BACKWARD, 0.0005f);
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera->ProcessKeyboard(LEFT, 0.001f);
+        camera->ProcessKeyboard(LEFT, 0.0005f);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera->ProcessKeyboard(RIGHT, 0.001f);
+        camera->ProcessKeyboard(RIGHT, 0.0005f);
 }

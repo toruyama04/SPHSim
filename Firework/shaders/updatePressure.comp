@@ -10,7 +10,7 @@ layout(std430, binding = 11) buffer EndIndex {
     uint endIndices[];
 };
 
-layout(std430, binding = 13) buffer Positions {
+layout(std430, binding = 2) buffer Positions {
     vec4 positions[];
 };
 
@@ -27,7 +27,6 @@ uniform float restDensity;
 uniform float h;
 uniform float k1;
 uniform float k2;
-uniform uint totalParticles;
 uniform uint boundaryParticleNum;
 uniform uint fluidParticleNum;
 uniform uint maxNeighbourNum;
@@ -45,34 +44,26 @@ void main()
     uint endIndex = endIndices[idx];
 
     vec3 x_i = positions[totalidx].xyz;
-    float d_i = densities[idx] + 1e-6;
+    float d_i = densities[totalidx];
     float p_i = k1 * (pow((d_i / restDensity), k2) - 1.0);
-    p_i = max(p_i, 0.0);
 
     vec3 pressureVal = vec3(0.0);
 
-    for (uint i = startIndex; i < endIndex; ++i)
+    for (uint i = 0; i < endIndex; ++i)
     {
-        uint nI = neighbourList[i];
+        uint ni = neighbourList[startIndex + i];
 
-        vec3 x_j = positions[nI].xyz;
-        float d_j;
+        vec3 x_j = positions[ni].xyz;
+        float d_j = densities[ni];
         float p_j;
 
-        if (nI < boundaryParticleNum)
-        {
-            d_j = restDensity;
+        if (ni < boundaryParticleNum)
             p_j = p_i;
-        }
         else
-        {
-            d_j = densities[nI] + 1e-6;
             p_j = k1 * (pow((d_j / restDensity), k2) - 1.0);
-        }        
-
+   
         vec3 r_ij = x_i - x_j;
         float r2 = dot(r_ij, r_ij);
-        if (r2 < 1e-8) continue;
 
         float r = sqrt(r2);
         vec3 dir = r_ij / r;
@@ -86,7 +77,6 @@ void main()
         float pieceWise2 = step(0.5, q) * step(q, 1.0);
         vec3 gradW = (pieceWise1 * w1 + pieceWise2 * w2) * step(q, 1.0001);
 
-        p_j = max(p_j, 0.0);
         float coeff = mass * (p_i / (d_i * d_i) + p_j / (d_j * d_j));
         pressureVal -= coeff * gradW;
     }

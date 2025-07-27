@@ -2,16 +2,12 @@
 
 layout(local_size_x = 256) in;
 
-layout(std430, binding = 13) buffer PositionsSSBO {
+layout(std430, binding = 2) buffer PositionsSSBO {
     vec4 positions[];
 };
 
 layout(std430, binding = 1) buffer Velocities {
     vec4 velocity[];
-};
-
-layout(std430, binding = 2) buffer PredictedVelocity {
-    vec4 predictedVelocity[];
 };
 
 layout(std430, binding = 4) buffer DensitySSBO {
@@ -28,10 +24,8 @@ layout(std430, binding = 11) buffer EndIndex {
 
 uniform float kviscosity;
 uniform float h;
-uniform uint totalParticles;
 uniform uint fluidParticleNum;
 uniform uint boundaryParticleNum;
-uniform float restDensity;
 uniform uint maxNeighbourNum;
 uniform float mass;
 uniform float kernelg;
@@ -52,15 +46,15 @@ void main()
 
     vec3 lapv = vec3(0.0);
 
-    for (uint i = startIndex; i < endIndex; ++i)
+    for (uint i = 0; i < endIndex; ++i)
     {
-        uint neighbour_i = neighbourList[i];
+        uint ni = neighbourList[startIndex + i];
 
-        vec3 x_j = positions[neighbour_i].xyz;
-        vec3 v_j = velocity[neighbour_i].xyz;
+        vec3 x_j = positions[ni].xyz;
+        vec3 v_j = velocity[ni].xyz;
 
-        // if particle is boundary, we set its density as rest density
-        float d_j = (neighbour_i < boundaryParticleNum) ? restDensity : densities[neighbour_i - boundaryParticleNum];
+        // if particle is boundary, we know its density is the rest density
+        float d_j = densities[ni];
 
         vec3 v_diff = v_j - v_i;
         vec3 r_ij = x_i - x_j;
@@ -84,5 +78,5 @@ void main()
 
     vec3 viscosityForce = mass * kviscosity * (10.0 * lapv);
     vec3 v_star = v_i + (dt / mass) * (viscosityForce + gravity);
-    predictedVelocity[idx].xyz = v_star;
+    velocity[totalidx].xyz = v_star;
 }

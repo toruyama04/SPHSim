@@ -39,13 +39,13 @@ private:
 
 	// particleSystemData
 	// radius is also the 'smoothing length' also referred to as 'h'
-	float radius = 0.2f;
+	float radius = 0.225f;
 	float particleMass;
 	GLuint fluidParticleNum;
 	GLuint totalParticles;
 	GLuint boundaryParticleNum;
 	GLuint maxNeighbourNum = 50;
-	float targetDensity = 750.0f;
+	float targetDensity = 1000.0f;
 
 	Shader* particleShader;
 	Shader* densityUpdate;

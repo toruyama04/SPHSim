@@ -166,6 +166,7 @@
     <None Include="shaders\particle.vert" />
     <None Include="shaders\timeIntegration.comp" />
     <None Include="shaders\updateDensity.comp" />
+    <None Include="shaders\updatePredictedPos.comp" />
     <None Include="shaders\updatePressure.comp" />
     <None Include="shaders\updateViscosity.comp" />
   </ItemGroup>

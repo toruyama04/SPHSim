@@ -62,5 +62,6 @@
     <None Include="shaders\updatePressure.comp" />
     <None Include="shaders\timeIntegration.comp" />
     <None Include="shaders\computePrefixSum.comp" />
+    <None Include="shaders\updatePredictedPos.comp" />
   </ItemGroup>
 </Project>

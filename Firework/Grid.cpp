@@ -57,7 +57,6 @@ Grid::Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint totalParticles, GLuin
     std::vector<GLuint> neighbourOffsets(binCount + 1, 0);
     std::vector<GLuint> flatNeighbours;
 
-    // copying to buffer requires complete contiguous data I presume
     flatNeighbours.reserve(binCount * 27);
 
     GLuint offset = 0;

@@ -32,7 +32,7 @@ private:
 	unsigned int screen_height;
 	
 	// weakly compressible -> C * (h / c + v_max) - could get Sim object to choose timestep
-	float fixedTimeStep = 0.0008f;
+	float fixedTimeStep = 0.0002f;
 	float lastFrame;
 	float accumulator;
 	double last_x;

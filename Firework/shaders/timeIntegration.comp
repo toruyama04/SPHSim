@@ -10,10 +10,6 @@ layout(std430, binding = 1) buffer Velocities {
     vec4 velocity[];
 };
 
-layout(std430, binding = 2) buffer PredictedVelocity {
-    vec4 predVelocity[];
-};
-
 layout(std430, binding = 3) buffer ForcesSSBO {
     vec4 forces[];
 };
@@ -34,7 +30,7 @@ void main()
     uint tidx = gl_GlobalInvocationID.x + boundaryParticleNum;
     if (idx >= fluidParticleNum) return;
     
-    vec3 vel = predVelocity[idx].xyz + (dt / mass) * forces[idx].xyz;
+    vec3 vel = velocity[tidx].xyz + (dt / mass) * forces[idx].xyz;
     vec3 pos = positions[tidx].xyz + dt * vel;
 
     positions[tidx].xyz = pos;
