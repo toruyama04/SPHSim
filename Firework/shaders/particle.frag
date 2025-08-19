@@ -1,13 +1,16 @@
 #version 460 core
 
-in float alpha;
+in vec4 colour;
+in vec2 vertexUV;
+
 out vec4 FragColor;
 
 void main() {
+    float dist = length(vertexUV);
+    if (dist > 1.0) discard;
 
-    if (alpha < 0.8)
-        FragColor = vec4(0.0, 0.0, 1.0, 0.05);
-    else
-        FragColor = vec4(0.0, 0.0, 1.0, 0.8);
+    float lighting = sqrt(1.0 - dist * dist);
 
+    FragColor = vec4(colour.rgb * lighting, colour.a);
 }
+

@@ -27,7 +27,7 @@ layout(std430, binding = 11) buffer EndIndex {
 };
 
 uniform float h;
-uniform float h3;
+uniform float h2;
 uniform float mass;
 uniform uint fluidParticleNum;
 uniform uint boundaryParticleNum;
@@ -57,19 +57,10 @@ void main()
         uint ni = neighbourList[startIndex + i];
         vec3 x_j = predPositions[ni].xyz;
 
-        float r = distance(x_i, x_j);
-        
-        float q = clamp(r / h, 0.0, 1.0);
-        float w1 = 6.0 * (q * q * q - q * q) + 1.0;
-        float w2 = 2.0 * pow(1.0 - q, 3.0);
+        float r2 = dot(x_i - x_j, x_i - x_j);
+        float diff = h2 - r2;
 
-        float pieceWise1 = step(0.0, q) * step(q, 0.5); 
-        float pieceWise2 = step(0.5, q) * step(q, 1.0);
-        float w = pieceWise1 * w1 + pieceWise2 * w2;
-        w *= sigma;
-
-        w *= step(q, 1.0001);
-        densitySum += w * mass;
+        densitySum += mass * sigma * diff * diff * diff;
     }
     // write back to densities, buffer is only for fluid particles, so dont skip
     densities[totalidx] = densitySum;

@@ -1,26 +1,36 @@
 #version 460 core
 
-layout (location = 0) in vec3 aPos;
+layout (location = 0) in vec2 vertex;
 
-out float alpha;
+out vec4 colour;
+out vec2 vertexUV;
 
 layout(std430, binding = 0) buffer PositionsSSBO {
     vec4 positions[];
 };
 
+layout(std430, binding = 14) buffer ColoursSSBO {
+    vec4 colours[];
+};
 
-uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
-
+uniform float particleSphereSize;
 
 void main() {
-    vec3 right = vec3(view[0][0], view[1][0], view[2][0]);
-    vec3 up = vec3(view[0][1], view[1][1], view[2][1]);
 
-    vec3 pos = positions[gl_InstanceID].xyz + (right * (aPos.x * 2.0 - 1.0)) + (up * (aPos.y * 2.0 - 1.0));
+    vec3 particlePos = positions[gl_InstanceID].xyz;
 
-    gl_Position = projection * view * model * vec4(pos, 1.0);
+    vec2 offset = vertex * particleSphereSize;
+    vec4 billboardPos = vec4(particlePos, 1.0);
+    vec4 viewPos = view * billboardPos;
+    viewPos.xy += offset;
+    gl_Position = projection * viewPos;
 
-    alpha = positions[gl_InstanceID].w;
+    vertexUV = vertex;
+
+    colour = colours[gl_InstanceID];
 }
+
+
+

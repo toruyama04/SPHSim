@@ -32,6 +32,7 @@ uniform uint fluidParticleNum;
 uniform uint maxNeighbourNum;
 uniform float kernelg;
 uniform float mass;
+uniform float norm;
 
 
 void main()
@@ -55,27 +56,17 @@ void main()
 
         vec3 x_j = positions[ni].xyz;
         float d_j = densities[ni];
-        float p_j;
-
-        if (ni < boundaryParticleNum)
-            p_j = p_i;
-        else
-            p_j = k1 * (pow((d_j / restDensity), k2) - 1.0);
+        float p_j = (ni < boundaryParticleNum) ? p_i : k1 * (pow((d_j / restDensity), k2) - 1.0);
    
         vec3 r_ij = x_i - x_j;
         float r2 = dot(r_ij, r_ij);
 
         float r = sqrt(r2);
+        float q = r / h;
         vec3 dir = r_ij / r;
 
-        float q = r / h;
-
-        vec3 w1 = kernelg * (3.0 * q * q - 2.0 * q) * dir;
-        vec3 w2 = -kernelg * pow(1.0 - q, 2.0) * dir;
-
-        float pieceWise1 = step(0.0, q) * step(q, 0.5);
-        float pieceWise2 = step(0.5, q) * step(q, 1.0);
-        vec3 gradW = (pieceWise1 * w1 + pieceWise2 * w2) * step(q, 1.0001);
+        float w = -kernelg * 3.0 * pow(1.0 - q, 2.0) / h;
+        vec3 gradW = w * dir;
 
         float coeff = mass * (p_i / (d_i * d_i) + p_j / (d_j * d_j));
         pressureVal -= coeff * gradW;

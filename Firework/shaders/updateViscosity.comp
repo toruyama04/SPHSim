@@ -28,7 +28,7 @@ uniform uint fluidParticleNum;
 uniform uint boundaryParticleNum;
 uniform uint maxNeighbourNum;
 uniform float mass;
-uniform float kernelg;
+uniform float sigma;
 uniform float dt;
 uniform vec3 gravity;
 
@@ -44,7 +44,7 @@ void main()
     uint startIndex = idx * maxNeighbourNum;
     uint endIndex = endIndices[idx];
 
-    vec3 lapv = vec3(0.0);
+    vec3 viscForce = vec3(0.0);
 
     for (uint i = 0; i < endIndex; ++i)
     {
@@ -53,30 +53,17 @@ void main()
         vec3 x_j = positions[ni].xyz;
         vec3 v_j = velocity[ni].xyz;
 
-        // if particle is boundary, we know its density is the rest density
         float d_j = densities[ni];
 
         vec3 v_diff = v_j - v_i;
         vec3 r_ij = x_i - x_j;
-        float r2 = dot(r_ij, r_ij);
-        if (r2 < 1e-8) continue;
+        float r = length(r_ij);
 
-        float r = sqrt(r2);
-        vec3 dir = r_ij / r;
-
-        float q = r / h;
-
-        vec3 w1 = kernelg * (3.0 * q * q - 2.0 * q) * dir;
-        vec3 w2 = -kernelg * pow(1.0 - q, 2.0) * dir;
-
-        float pieceWise1 = step(0.0, q) * step(q, 0.5);
-        float pieceWise2 = step(0.5, q) * step(q, 1.0);
-        vec3 gradW = (pieceWise1 * w1 + pieceWise2 * w2) * step(q, 1.0001);
-
-        lapv += (mass / d_j) * (dot(v_diff, r_ij) / (r2 + 1e-6)) * gradW;
+        float laplacian = sigma * (h - r);
+        
+        viscForce += (mass / d_j) * v_diff * laplacian;
     }
-
-    vec3 viscosityForce = mass * kviscosity * (10.0 * lapv);
-    vec3 v_star = v_i + (dt / mass) * (viscosityForce + gravity);
+    vec3 totalForce = kviscosity * viscForce + gravity;
+    vec3 v_star = v_i + (dt / mass) * totalForce;
     velocity[totalidx].xyz = v_star;
 }

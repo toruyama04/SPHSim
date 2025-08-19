@@ -1,38 +1,36 @@
 ﻿#include <glad/glad.h>
 
 #include "Application.h"
+
 #include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 #include <iostream>
 
 void glfw_error_callback(int error, const char* desc) {
+    // error callback 
     std::cerr << "glfw error: " << desc << "\n";
 }
 
 void glfw_cursor_pos_callback(GLFWwindow* glfw_window, double xpos, double ypos) {
+    // get current application using window user pointer and call its mouseMove
     Application* app = static_cast<Application*>(glfwGetWindowUserPointer(glfw_window));
     if (app) {
         app->mouseMove(xpos, ypos);
     }
 }
 
-void Application::mouseMove(double xpos, double ypos) {
-    if (first_mouse) {
-        last_x = xpos;
-        last_y = ypos;
-        first_mouse = false;
-    }
+void Application::mouseMove(float xpos, float ypos) {
+    // find how much mouse has moved vertically/horizontally and adjust camera view
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos;
 
-    double xoffset = xpos - last_x;
-    double yoffset = last_y - ypos;
+    lastX = xpos;
+    lastY = ypos;
 
-    last_x = xpos;
-    last_y = ypos;
-
-    camera->ProcessMouseMovement(static_cast<float>(xoffset), static_cast<float>(yoffset));
+    camera->ProcessMouseMovement(xoffset, yoffset);
 }
 
+// adjusts viewport to resized size
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
@@ -46,11 +44,26 @@ void Application::handleFramebufferSize(int width, int height)
     glViewport(0, 0, width, height);
 }
 
+void Application::processInput()
+{
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        camera->ProcessKeyboard(FORWARD, 0.001f);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        camera->ProcessKeyboard(BACKWARD, 0.001f);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camera->ProcessKeyboard(LEFT, 0.001f);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camera->ProcessKeyboard(RIGHT, 0.001f);
+}
+
+
 
 Application::Application(unsigned int screen_width, unsigned int screen_height, const char* title)
 {
-    // Initialisation: setting error/cursor/framebuffersize callback, OpenGL version
     glfwSetErrorCallback(glfw_error_callback);
+
     if (!glfwInit())
     {
         std::cerr << "Failed to initialize GLFW\n";
@@ -71,6 +84,12 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
 
     glfwMakeContextCurrent(window);
     glfwSetWindowUserPointer(window, this);
+
+    double xpos, ypos;
+    glfwGetCursorPos(window, &xpos, &ypos);
+    lastX = xpos;
+    lastY = ypos;
+
     glfwSetCursorPosCallback(window, glfw_cursor_pos_callback);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -93,13 +112,10 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
     glViewport(0, 0, frame_width, frame_height);
 
     // Setting instance variables
-    first_mouse = true;
     lastFrame = 0.0f;
-    this->screen_height = screen_height;
-    this->screen_width = screen_width;
+    this->screenHeight = screen_height;
+    this->screenWidth = screen_width;
     accumulator = 0.0f;
-    last_x = static_cast<double>(screen_width) / 2.0f;
-    last_y = static_cast<double>(screen_height) / 2.0f;
 
     // Creating camera (from learnopengl.com)
     camera = new Camera(glm::vec3(1.5f, 1.5f, 8.75f));
@@ -119,12 +135,14 @@ Application::~Application()
     glfwTerminate();
 }
 
-void Application::run()
-{
+void Application::run() {
     accumulator = 0.0f;
     lastFrame = 0.0f;
+
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glClearColor(0.75f, 0.75f, 0.75f, 1.0f);
+
 	while (!glfwWindowShouldClose(window))
 	{
         glfwPollEvents();
@@ -136,7 +154,6 @@ void Application::run()
         accumulator += frameTime;
 
         processInput();
-        glClearColor(0.75f, 0.75f, 0.75f, 1.0f);
 
         while (accumulator >= fixedTimeStep)
         {
@@ -145,7 +162,7 @@ void Application::run()
         }
 
         glm::mat4 view = camera->GetViewMatrix();
-        glm::mat4 projection = glm::perspective(glm::radians(camera->Zoom), static_cast<float>(screen_width) / static_cast<float>(screen_height), 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(camera->Zoom), static_cast<float>(screenWidth) / static_cast<float>(screenHeight), 0.1f, 100.0f);
 
         sim->render(view, projection);
 
@@ -153,48 +170,11 @@ void Application::run()
 	}
 }
 
-void Application::addSim(Sim* sim_in)
-{
+void Application::addSim(Sim* sim_in) {
     this->sim = sim_in;
-    if (sim == nullptr)
-    {
+    if (sim == nullptr) {
         std::cerr << "Sim add unsuccessful\n";
     }
 }
 
-/*void Application::displayFPS() {
-    static double previousSeconds = glfwGetTime();
-    static int frameCount = 0;
 
-    // Calculate time elapsed since last frame
-    double currentSeconds = glfwGetTime();
-    double elapsedSeconds = currentSeconds - previousSeconds;
-
-    // Update FPS every second
-    if (elapsedSeconds >= 1.0) {
-        double fps = static_cast<double>(frameCount) / elapsedSeconds;
-        // Print FPS to console
-        std::cout << "FPS: " << fps << "\n";
-
-        // Reset frame count and timer
-        frameCount = 0;
-        previousSeconds = currentSeconds;
-    }
-
-    // Increment frame count
-    frameCount++;
-}*/
-
-void Application::processInput()
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera->ProcessKeyboard(FORWARD, 0.0005f);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera->ProcessKeyboard(BACKWARD, 0.0005f);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera->ProcessKeyboard(LEFT, 0.0005f);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera->ProcessKeyboard(RIGHT, 0.0005f);
-}

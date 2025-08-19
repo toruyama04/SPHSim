@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <glad/glad.h>
+
 #include <GLFW/glfw3.h>
 
 #include "camera.h"
@@ -15,27 +16,27 @@ public:
 
 	void run();
 
-	// void displayFPS();
 	void addSim(Sim* sim_in);
 
 	void handleFramebufferSize(int width, int height);
-	void mouseMove(double xpos, double ypos);
+	void mouseMove(float xpos, float ypos);
 	void processInput();
 
 
 private:
 	Sim* sim = nullptr;
-
 	GLFWwindow* window = nullptr;
 	Camera* camera = nullptr;
-	unsigned int screen_width;
-	unsigned int screen_height;
+
+	unsigned int screenWidth;
+	unsigned int screenHeight;
 	
+	// CFL condition
 	// weakly compressible -> C * (h / c + v_max) - could get Sim object to choose timestep
-	float fixedTimeStep = 0.0002f;
+	float fixedTimeStep = 0.0005f;
+
 	float lastFrame;
 	float accumulator;
-	double last_x;
-	double last_y;
-	bool first_mouse;
+	float lastX;
+	float lastY;
 };
