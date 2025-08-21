@@ -1,9 +1,10 @@
 ﻿#include "Grid.h"
 #include <vector>
 
-Grid::Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint totalParticles, GLuint fluidParticles,
-    GLuint maxNeighbourNum, float gridSpacing)
+Grid::Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint totalParticles, 
+    GLuint fluid ,GLuint maxNeighbourNum, float gridSpacing)
 {
+    // buffer specific information is provided in shaders, naming was made explicit
     glGenBuffers(1, &particleNumPerBinSSBO);
     glGenBuffers(1, &binIndexForParticleSSBO);
     glGenBuffers(1, &prefixForBinReorderSSBO);
@@ -16,14 +17,16 @@ Grid::Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint totalParticles, GLuin
 
     GLuint resolution = GLuint((extents.x - gridOrigin.x) / gridSpacing);
 
+    // equally spaced bins, assuming cube 
     binCount = resolution * resolution * resolution;
     resolutionVec = glm::vec3(resolution, resolution, resolution);
+
     this->maxNeighbourNum = maxNeighbourNum;
     this->gridSpacing = gridSpacing;
     this->gridOrigin = gridOrigin;
     this->totalParticles = totalParticles;
-    this->fluidParticleNum = fluidParticles;
-    this->boundaryParticleNum = totalParticles - fluidParticles;
+    this->fluidParticleNum = fluid;
+    this->boundaryParticleNum = totalParticles - fluid;
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, particleNumPerBinSSBO);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * binCount, nullptr, GL_DYNAMIC_DRAW);
@@ -46,26 +49,26 @@ Grid::Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint totalParticles, GLuin
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 9, prefixIndexCounterSSBO);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, neighbourListSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * fluidParticles * maxNeighbourNum, nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * fluid * maxNeighbourNum, nullptr, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, neighbourListSSBO);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, endIndexNeighbourSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * fluidParticles, nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * fluid, nullptr, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 11, endIndexNeighbourSSBO);
 
     // computing the neighbouring bin indices for all bins for flatNeighbours - only need to compute once
     std::vector<GLuint> neighbourOffsets(binCount + 1, 0);
     std::vector<GLuint> flatNeighbours;
 
-    flatNeighbours.reserve(binCount * 27);
-
     GLuint offset = 0;
 
-    for (unsigned int z = 0; z < resolution; ++z) {
-        for (unsigned int y = 0; y < resolution; ++y) {
-            for (unsigned int x = 0; x < resolution; ++x) {
+    for (GLuint z = 0; z < resolution; ++z) {
+        for (GLuint y = 0; y < resolution; ++y) {
+            for (GLuint x = 0; x < resolution; ++x) {
 
                 GLuint binIndex = x + y * resolution + z * resolution * resolution;
+
+                // we also make a neighbouroffset, since we pack all the flatneighbour information
                 neighbourOffsets[binIndex] = offset;
 
                 for (int dz = -1; dz <= 1; ++dz) {
@@ -100,10 +103,10 @@ Grid::Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint totalParticles, GLuin
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * neighbourOffsets.size(), neighbourOffsets.data(), GL_STATIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 13, neighbourBinOffsetSSBO);
 
-    countShader = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/count.comp");
-    reorderShader = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/reorder.comp");
-    buildNeighbourListShader = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/buildNeighbourList.comp");
-    computePrefixSumShader = new Shader("C:/Users/toruy_iu/source/repos/Firework/Firework/shaders/computePrefixSum.comp");
+    countShader = new Shader("shaders/count.comp");
+    reorderShader = new Shader("shaders/reorder.comp");
+    buildNeighbourListShader = new Shader("shaders/buildNeighbourList.comp");
+    computePrefixSumShader = new Shader("shaders/computePrefixSum.comp");
 }
 
 Grid::~Grid()
@@ -119,11 +122,11 @@ void Grid::build(float searchRadius) {
     GLuint groupNumAll = (totalParticles + 255) / 256;
     GLuint groupNumFluid = (fluidParticleNum + 255) / 256;
 
+    // non-assign buffers need resetting
     glClearNamedBufferData(particleNumPerBinSSBO, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
     glClearNamedBufferData(prefixIndexCounterSSBO, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
 
-
-    // setting bin index for each particle, counting particles per bin
+    // details in count.comp
     countShader->use();
     countShader->setVec3("gridResolution", resolutionVec);
     countShader->setVec3("gridOrigin", gridOrigin);
@@ -132,23 +135,20 @@ void Grid::build(float searchRadius) {
     glDispatchCompute(groupNumAll, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-    // Computing prefix indices on GPU - also retting prefixCounter
+    // details in computePrefixSum.comp
     computePrefixSumShader->use();
     computePrefixSumShader->setUInt("binCount", binCount);
     computePrefixSumShader->setUInt("totalParticles", totalParticles);
     glDispatchCompute(1, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-    // creating a particlesOrderedByBin buffer using prefix sum 
+    // details in reorder.comp
     reorderShader->use();
     reorderShader->setUInt("totalParticles", totalParticles);
     glDispatchCompute(groupNumAll, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-    /** Build the neighbour list
-    *    the idea is to only search for nearby particles in the surrounding grid bins
-    *    instead of checking between every particle
-    */ 
+    // details in buildNeighbourList.comp
     buildNeighbourListShader->use();
     buildNeighbourListShader->setFloat("searchRadius", searchRadius);
     buildNeighbourListShader->setUInt("maxNeighboursPerParticle", maxNeighbourNum);

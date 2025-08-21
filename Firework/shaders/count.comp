@@ -1,5 +1,10 @@
 #version 460
 
+/* Count Shader: 1
+    - accumulates number of particles in each bin
+    - also assigns bin index to each particle
+*/
+
 layout(local_size_x = 256) in;
 
 layout(std430, binding = 0) buffer Positions {
@@ -14,6 +19,7 @@ layout(std430, binding = 6) buffer binIndexForParticleSSBO {
     uint binIndexForParticle[];
 };
 
+// 'shader parameters' - info about grid
 uniform vec3 gridResolution;
 uniform vec3 gridOrigin;
 uniform float gridSpacing;
@@ -22,10 +28,13 @@ uniform uint totalParticles;
 
 void main()
 {   
+    // use threadId for index, check if we need to return early
     uint idx = gl_GlobalInvocationID.x;
     if (idx >= totalParticles) return;
 
     vec3 pos = positions[idx].xyz;
+
+    //  compute values for grid index
     vec3 gridPos = (pos - gridOrigin) / gridSpacing;
 
     float gridPosx = floor(gridPos.x);
@@ -36,11 +45,13 @@ void main()
         gridPosy >= 0.0 && gridPosy < gridResolution.y &&
         gridPosz >= 0.0 && gridPosz < gridResolution.z) {
 
+        // turning 3D index to 1D, x + (y * res_y) + (z * res_x * res_y)
+        // index computation must align with all others
         uint binIndex = uint(gridPosx + (gridPosy * gridResolution.x) + 
             (gridPosz * gridResolution.x * gridResolution.y));
 
+        // assign bin index and atomic add to respective buffers
         binIndexForParticle[idx] = binIndex;
-
         atomicAdd(particleNumPerBin[binIndex], 1);
     } 
     else

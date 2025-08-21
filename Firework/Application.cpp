@@ -44,18 +44,18 @@ void Application::handleFramebufferSize(int width, int height)
     glViewport(0, 0, width, height);
 }
 
-void Application::processInput()
+void Application::processInput(float dt)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera->ProcessKeyboard(FORWARD, 0.001f);
+        camera->ProcessKeyboard(FORWARD, dt);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera->ProcessKeyboard(BACKWARD, 0.001f);
+        camera->ProcessKeyboard(BACKWARD, dt);
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera->ProcessKeyboard(LEFT, 0.001f);
+        camera->ProcessKeyboard(LEFT, dt);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera->ProcessKeyboard(RIGHT, 0.001f);
+        camera->ProcessKeyboard(RIGHT, dt);
 }
 
 
@@ -113,8 +113,8 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
 
     // Setting instance variables
     lastFrame = 0.0f;
-    this->screenHeight = screen_height;
-    this->screenWidth = screen_width;
+    this->screenHeight = static_cast<float>(screen_height);
+    this->screenWidth = static_cast<float>(screen_width);
     accumulator = 0.0f;
 
     // Creating camera (from learnopengl.com)
@@ -146,23 +146,24 @@ void Application::run() {
 	while (!glfwWindowShouldClose(window))
 	{
         glfwPollEvents();
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // delta-time
         float currentFrame = static_cast<float>(glfwGetTime());
         float frameTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
         accumulator += frameTime;
 
-        processInput();
+        processInput(frameTime);
 
-        while (accumulator >= fixedTimeStep)
-        {
+        while (accumulator >= fixedTimeStep) {
             sim->update(fixedTimeStep);
             accumulator -= fixedTimeStep;
         }
 
         glm::mat4 view = camera->GetViewMatrix();
-        glm::mat4 projection = glm::perspective(glm::radians(camera->Zoom), static_cast<float>(screenWidth) / static_cast<float>(screenHeight), 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(camera->Zoom), screenWidth / screenHeight, 0.1f, 100.0f);
 
         sim->render(view, projection);
 

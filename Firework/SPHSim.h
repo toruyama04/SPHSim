@@ -40,7 +40,7 @@ private:
 	GLuint boundaryParticleNum;
 	GLuint maxNeighbourNum = 50;
 	float targetDensity = 1000.0f;
-	float sphereRadius = 0.05f;
+	float sphereRadius = 0.03f;
 
 	Shader* particleShader;
 	Shader* densityUpdate;

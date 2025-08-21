@@ -1,5 +1,10 @@
 #version 460
 
+/* Compute Prefix Sum: 2
+    - simple prefix sum for particles in bins
+    - is only executed for one thread! could be changed
+*/
+
 layout(local_size_x = 1) in;
 
 layout(std430, binding = 5) buffer particleNumPerBinSSBO {
@@ -15,6 +20,8 @@ uniform uint totalParticles;
 
 void main() {
     uint sum = 0;
+
+    // an accumulated sum across particles in each bin
     for (uint i = 0; i < binCount; ++i) {
         prefixForBinReorder[i] = sum;
         sum += particleNumPerBin[i];

@@ -7,8 +7,8 @@
 class Grid
 {
 public:
-	Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint totalParticles, GLuint fluid, 
-		GLuint maxNeighbourNum, float gridSpacing);
+	Grid(glm::vec3 gridOrigin, glm::vec3 extents, GLuint totalParticles,
+		GLuint fluid, GLuint maxNeighbourNum, float gridSpacing);
 	~Grid();
 	void build(float searchRadius);
 

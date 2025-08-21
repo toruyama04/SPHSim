@@ -20,7 +20,7 @@ public:
 
 	void handleFramebufferSize(int width, int height);
 	void mouseMove(float xpos, float ypos);
-	void processInput();
+	void processInput(float dt);
 
 
 private:
@@ -28,8 +28,8 @@ private:
 	GLFWwindow* window = nullptr;
 	Camera* camera = nullptr;
 
-	unsigned int screenWidth;
-	unsigned int screenHeight;
+	float screenWidth;
+	float screenHeight;
 	
 	// CFL condition
 	// weakly compressible -> C * (h / c + v_max) - could get Sim object to choose timestep
