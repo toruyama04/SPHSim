@@ -1,5 +1,11 @@
 #version 460
 
+/* 
+   Update Viscosity: 7
+    - we re-calculate the velocity mid-way
+    - includes viscosity and external forces
+*/
+
 layout(local_size_x = 256) in;
 
 layout(std430, binding = 2) buffer PositionsSSBO {
@@ -41,11 +47,10 @@ void main()
     vec3 x_i = positions[totalidx].xyz;
     vec3 v_i = velocity[totalidx].xyz;
 
-    uint startIndex = idx * maxNeighbourNum;
-    uint endIndex = endIndices[idx];
-
     vec3 viscForce = vec3(0.0);
 
+    uint startIndex = idx * maxNeighbourNum;
+    uint endIndex = endIndices[idx];
     for (uint i = 0; i < endIndex; ++i)
     {
         uint ni = neighbourList[startIndex + i];
@@ -65,5 +70,6 @@ void main()
     }
     vec3 totalForce = kviscosity * viscForce + gravity;
     vec3 v_star = v_i + (dt / mass) * totalForce;
+
     velocity[totalidx].xyz = v_star;
 }

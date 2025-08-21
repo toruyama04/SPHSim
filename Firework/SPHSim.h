@@ -41,6 +41,7 @@ private:
 	GLuint maxNeighbourNum = 50;
 	float targetDensity = 1000.0f;
 	float sphereRadius = 0.03f;
+	float kviscosity = 0.08f;
 
 	Shader* particleShader;
 	Shader* densityUpdate;

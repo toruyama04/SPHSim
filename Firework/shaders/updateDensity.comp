@@ -1,13 +1,15 @@
 #version 460
 
+/* 
+   Update Density: 5
+    - relatively simple, we accumulate density for a particle 
+    - go through neighbour particles and update density value
+*/
+
 layout(local_size_x = 256) in;
 
 layout(std430, binding = 2) buffer predPositionsSSBO {
     vec4 predPositions[];
-};
-
-layout(std430, binding = 0) buffer positionsSSBO {
-    vec4 positions[];
 };
 
 layout(std430, binding = 3) buffer forcesSSBO {
@@ -38,6 +40,7 @@ uniform float sigma;
 void main()
 {
     // skip the boundary particles, we index from the first fluid particle
+    // this will be a common pattern for compute shaders over fluid particles only 
     uint idx = gl_GlobalInvocationID.x;
     uint totalidx = gl_GlobalInvocationID.x + boundaryParticleNum;
     if (idx >= fluidParticleNum) return;
@@ -45,21 +48,22 @@ void main()
     // resetting forces as well
     forces[idx] = vec4(0.0);
 
-    uint startIndex = idx * maxNeighbourNum;
-    uint endIndex = endIndices[idx];
-
     float densitySum = 0.0;
     vec3 x_i = predPositions[totalidx].xyz;
 
-    // going through each neighbour
+    // another common pattern - going through neighbourlist
+    uint startIndex = idx * maxNeighbourNum;
+    uint endIndex = endIndices[idx];
     for (uint i = 0; i < endIndex; ++i)
     {
+        // compute distance from particles
         uint ni = neighbourList[startIndex + i];
         vec3 x_j = predPositions[ni].xyz;
 
         float r2 = dot(x_i - x_j, x_i - x_j);
         float diff = h2 - r2;
 
+        // using smoothing kernel
         densitySum += mass * sigma * diff * diff * diff;
     }
     // write back to densities, buffer is only for fluid particles, so dont skip

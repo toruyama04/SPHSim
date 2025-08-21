@@ -251,6 +251,7 @@ void Sim::update(float delta_time) {
     // find all neighbours and build neighbourList
     neighbourGrid->build(this->radius);
 
+    // an improvement where we compute fluid data based on particle's trajectory
     positionPredict->use();
     positionPredict->setUInt("totalParticleNum", totalParticles);
     positionPredict->setUInt("boundaryParticleNum", boundaryParticleNum);
@@ -258,7 +259,10 @@ void Sim::update(float delta_time) {
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
 
-    // reconstruct density
+    /* reconstruct density
+    *   - establish a poly6 kernel for density estimation
+    *   - pre-calculate sigma value to reduce computation in shaders
+    */
     float h2 = radius * radius;
     float kernNorm = 315.0f / (64.0 * 3.14159265359f * std::pow(radius, 9.0));
     densityUpdate->use();
@@ -272,8 +276,11 @@ void Sim::update(float delta_time) {
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
 
+    /* compute predicted velocity, incorporates external forces
+    *   - laplacian kernel for viscosity 
+    */
     viscosityUpdate->use();
-    viscosityUpdate->setFloat("kviscosity", 0.02);
+    viscosityUpdate->setFloat("kviscosity", kviscosity);
     viscosityUpdate->setFloat("h", radius);
     viscosityUpdate->setUInt("fluidParticleNum", fluidParticleNum);
     viscosityUpdate->setUInt("boundaryParticleNum", boundaryParticleNum);
@@ -285,6 +292,9 @@ void Sim::update(float delta_time) {
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
 
+    /* compute pressure force
+    *   - spiky kernel
+    */
     pressureUpdate->use();
     pressureUpdate->setFloat("restDensity", targetDensity);
     pressureUpdate->setFloat("h", radius);
@@ -293,11 +303,10 @@ void Sim::update(float delta_time) {
     pressureUpdate->setUInt("boundaryParticleNum", boundaryParticleNum);
     pressureUpdate->setUInt("fluidParticleNum", fluidParticleNum);
     pressureUpdate->setUInt("maxNeighbourNum", maxNeighbourNum);
-    pressureUpdate->setFloat("kernelg", 315.0f / (64.0f * 3.14159265359f * std::pow(radius,5.0)));
+    pressureUpdate->setFloat("sigma", -45.0 / (3.14159265359 * std::pow(radius, 6.0)));
     pressureUpdate->setFloat("mass", particleMass);
     glDispatchCompute(groupNum, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
-
 
     timeIntegrations->use();
     timeIntegrations->setFloat("dt", delta_time);

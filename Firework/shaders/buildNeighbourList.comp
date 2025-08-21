@@ -1,5 +1,12 @@
 #version 460
 
+/* Build Neighbour List shader: 4
+    - actually builds a list of neighbours for each particle
+    - goes through each particle, finds its bin index
+        - search through particles in surrounding bins and current bin
+        - keep adding neighbouring particles within smoothing radius to list
+*/
+
 layout(local_size_x = 256) in;
 
 layout(std430, binding = 0) buffer positionsSSBO {
@@ -48,11 +55,13 @@ void main() {
     vec3 particlePos = positions[idx].xyz;
     uint binIndex = binIndexForParticle[idx];
 
+    // maxNeighbours limits the number of neighbours, to improve efficiency
     uint neighbourListStart = og * maxNeighboursPerParticle;
     uint neighbourCount = 0;
 
     float searchRadius2 = searchRadius * searchRadius;
 
+    // for each surrounding bin + current bin
     for (uint binid = nBinOffset[binIndex]; binid < nBinOffset[binIndex + 1]; ++binid) {
         uint neighbourBinIndex = flatNeighbours[binid];
 
@@ -63,11 +72,13 @@ void main() {
             uint nIndex = particlesOrderedByBin[j];
             vec3 neighbourPos = positions[nIndex].xyz;
 
+            // find neighbour particle, compute distance and other checks
             bool notSelf = (nIndex != idx);
             float dist2 = dot(particlePos - neighbourPos, particlePos - neighbourPos);
             bool withinRadius = (dist2 < searchRadius2);
             bool canAdd = (neighbourCount < maxNeighboursPerParticle);
 
+            // add to neighbourlist
             if (notSelf && withinRadius && canAdd) {
                 neighbourList[neighbourListStart + neighbourCount] = nIndex;
                 neighbourCount++;

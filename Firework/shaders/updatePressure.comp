@@ -1,5 +1,10 @@
 #version 460
 
+/* 
+   Update Pressure: 8
+    - involves producing a repellant/attractive force
+*/
+
 layout(local_size_x = 256) in;
 
 layout(std430, binding = 10) buffer NeighbourListSSBO {
@@ -30,9 +35,8 @@ uniform float k2;
 uniform uint boundaryParticleNum;
 uniform uint fluidParticleNum;
 uniform uint maxNeighbourNum;
-uniform float kernelg;
+uniform float sigma;
 uniform float mass;
-uniform float norm;
 
 
 void main()
@@ -41,32 +45,35 @@ void main()
     uint totalidx = gl_GlobalInvocationID.x + boundaryParticleNum;
     if (idx >= fluidParticleNum) return;
 
-    uint startIndex = idx * maxNeighbourNum;
-    uint endIndex = endIndices[idx];
-
     vec3 x_i = positions[totalidx].xyz;
     float d_i = densities[totalidx];
+
+    // pressure computation
     float p_i = k1 * (pow((d_i / restDensity), k2) - 1.0);
 
     vec3 pressureVal = vec3(0.0);
 
+    uint startIndex = idx * maxNeighbourNum;
+    uint endIndex = endIndices[idx];
     for (uint i = 0; i < endIndex; ++i)
     {
         uint ni = neighbourList[startIndex + i];
 
         vec3 x_j = positions[ni].xyz;
         float d_j = densities[ni];
+
+        // mirror pressure if boundary particle
         float p_j = (ni < boundaryParticleNum) ? p_i : k1 * (pow((d_j / restDensity), k2) - 1.0);
    
         vec3 r_ij = x_i - x_j;
         float r2 = dot(r_ij, r_ij);
 
         float r = sqrt(r2);
-        float q = r / h;
         vec3 dir = r_ij / r;
 
-        float w = -kernelg * 3.0 * pow(1.0 - q, 2.0) / h;
-        vec3 gradW = w * dir;
+        // spiky kernel gradient
+        float factor = sigma * (h - r) * (h - r);
+        vec3 gradW = factor * dir;
 
         float coeff = mass * (p_i / (d_i * d_i) + p_j / (d_j * d_j));
         pressureVal -= coeff * gradW;
