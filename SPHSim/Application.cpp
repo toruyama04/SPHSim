@@ -118,7 +118,7 @@ Application::Application(unsigned int screen_width, unsigned int screen_height, 
     accumulator = 0.0f;
 
     // Creating camera (from learnopengl.com)
-    camera = new Camera(glm::vec3(2.0f, 2.3f, 9.75f));
+    camera = new Camera(glm::vec3(2.0f, 2.1f, 9.75f));
     if (camera == nullptr) {
         std::cerr << "Failed to create camera\n";
         glfwDestroyWindow(window);
