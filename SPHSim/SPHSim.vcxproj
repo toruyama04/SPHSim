@@ -22,7 +22,7 @@
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{42f0ec6e-c1c2-4913-8bcb-88e313c09b72}</ProjectGuid>
-    <RootNamespace>Firework</RootNamespace>
+    <RootNamespace>SPHSim</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>SPHSim</ProjectName>
   </PropertyGroup>
