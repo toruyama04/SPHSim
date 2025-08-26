@@ -33,7 +33,7 @@ As per the name, SPH doesn't handle particles as specific points in the world, r
 
 A kernel function allows us to take a distance between two particles and work out the 'influence' of one particle on the other. An example of a simple kernel function would be a simple triangular kernel.
 
-![triangle](Other/triangle.jpg)
+
 
 here is a 2D example, where the particle to compare with is at $x = 0$ and the x axis represents the distance from that particle. The y axis represents the quantity we want to approximate. A simple value we would want to approximate is density, where for each particle we accumulate a density value by adding higher values for closer neighbours and lower values for neighours further away. This kernel function would help compute this, resulting in a smoothing of the density. This is exactly how we can approximate a continuous field into discrete points effectively. Unlike scalar values (density), approximating forces like pressure requires us to use the gradient of the kernel. Pressure pushes particles away from each other, with a stronger force for particles closer together. There is also the viscosity force which uses the laplacian of the kernel (2nd order derivative) to gradually smooth out the velocity differences between particles. How I used kernels and more specifically which ones I used will be covered later as the triangular kernel unfortunately won't cut it. 
 
