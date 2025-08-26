@@ -38,10 +38,10 @@ private:
 	GLuint fluidParticleNum;
 	GLuint totalParticles;
 	GLuint boundaryParticleNum;
-	GLuint maxNeighbourNum = 50;
+	GLuint maxNeighbourNum = 60;
 	float targetDensity = 1000.0f;
 	float sphereRadius = 0.03f;
-	float kviscosity = 0.08f;
+	float kviscosity = 0.12f;
 
 	Shader* particleShader;
 	Shader* densityUpdate;

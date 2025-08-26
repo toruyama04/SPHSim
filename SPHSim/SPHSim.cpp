@@ -175,7 +175,7 @@ void Sim::addParticleCube(const glm::vec3 center, float spacing, GLuint particle
     fluidParticleNum = particlesPerSide * particlesPerSide * particlesPerSide;
 
     // spacing and layers - particle-based boundary conditions
-    boundaryParticleNum = addBoundaryParticles(positions, 0.08, 2);
+    boundaryParticleNum = addBoundaryParticles(positions, 0.072, 1);
     totalParticles = fluidParticleNum + boundaryParticleNum;
 
     for (int i = 0; i < boundaryParticleNum; i++)

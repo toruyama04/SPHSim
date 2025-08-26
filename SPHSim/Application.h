@@ -33,7 +33,7 @@ private:
 	
 	// CFL condition
 	// weakly compressible -> C * (h / c + v_max) - could get Sim object to choose timestep
-	float fixedTimeStep = 0.0006f;
+	float fixedTimeStep = 0.00055f;
 
 	float lastFrame;
 	float accumulator;
