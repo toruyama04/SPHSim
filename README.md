@@ -4,6 +4,8 @@ based on: https://sph-tutorial.physics-simulation.org/pdf/SPH_Tutorial.pdf
 
 - using OpenGL graphics and compute shaders
 
+[Download the installer](ProjectInstaller/SPHSimInstaller.exe)
+
 # Build
 **Prerequisites**
 - Visual Studio 2022
