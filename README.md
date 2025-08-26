@@ -5,6 +5,21 @@ based on: https://sph-tutorial.physics-simulation.org/pdf/SPH_Tutorial.pdf
 - using OpenGL graphics and compute shaders
 
 # Build
+**Prerequisites**
+- Visual Studio 2022
+- Dependencies:
+  - GLFW - https://www.glfw.org/download.html
+  - Glad - https://glad.dav1d.de/ (Profile - core, gl - version 4.6)
+  - glm - https://glm.g-truc.net/0.9.9/index.html
+
+**Project Settings**
+- Make folders for include folders (glfw, glad, glm) and lib files (glfw.lib) to make the next steps easier
+- Once opened in Visual Studio:
+- in Configuration Properties -> VC++ Directories -> Include Directories - add the path to your include folder
+  - in that same window, add the path to your lib folder in Library Directories
+- in Configuration Properties -> C/C++ -> General -> Additional Include Directories - add the include folder
+- in Configuration Properties -> Linker -> General -> Additional library Directories - add the lib folder
+- in Configuration Properties -> Linker -> Input -> Additional Dependencies - add 'glfw3.lib', 'opengl32.lib', 'kernel32.lib'
 
 # Theory
 Smoothed Particle Hydrodynamics involves the use of particles to mimic fluid flow. It is a lagrangian method meaning each particle holds its own data rather than having a grid based method (Eulerian) which holds data at fixed positions.
