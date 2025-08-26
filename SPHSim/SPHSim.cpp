@@ -10,7 +10,6 @@
 
 #include <vector>
 #include <unordered_set>
-#include <filesystem>
 
 // square
 float vertices[] = {
