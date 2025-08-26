@@ -74,6 +74,11 @@ void Sim::initBuffers() {
 }
 
 void Sim::initSSBO() {
+    /*  1. first generate the buffer
+        2. bind the specific SSBO to the current GL_SHADER_STORAGE_BUFFER
+        3. specify the data layout, size, and the default data if necessary
+        4. assign a unique buffer identifier number (BufferBase) */
+    
     glGenBuffers(1, &positionsSSBO);
     glGenBuffers(1, &velocitiesSSBO);
     glGenBuffers(1, &forcesSSBO);
@@ -81,7 +86,7 @@ void Sim::initSSBO() {
     glGenBuffers(1, &predPositionsSSBO);
     glGenBuffers(1, &colourSSBO);
 
-    // important to note which buffers have data for all fluid/boundary particles or both
+    // important to note which buffers have data for just fluid/boundary particles or both
 
     // 0: initialising positions SSBO:
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, positionsSSBO);
@@ -104,7 +109,7 @@ void Sim::initSSBO() {
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * fluidParticleNum, zeroed_outF.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, forcesSSBO);
 
-    // 4: initialising densitiesSSBO buffer: holds densities for each fluid particle
+    // 4: initialising densitiesSSBO buffer:
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, densitiesSSBO);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * totalParticles, nullptr, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, densitiesSSBO);

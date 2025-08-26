@@ -143,6 +143,7 @@ void Application::run() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glClearColor(0.75f, 0.75f, 0.75f, 1.0f);
 
+    // simulation loop 
 	while (!glfwWindowShouldClose(window))
 	{
         glfwPollEvents();
