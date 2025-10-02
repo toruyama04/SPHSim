@@ -108,22 +108,7 @@ void main()     // shader will execute this function first just like in regular 
         go through all this particle's neighbours and accumulate the density
         assign the density back to the density buffer */
 }
-
-
-#### NeighbourHood Search (Grid)
-
-#### Simulation Loop
-- updateDensity
-- updateViscosity
-- updatePressure
-- timeIntegration
-- performance improvements
-
-#### Rendering (OpenGL)
-- visualising the particles
-- todo: GUI, user-input
 ```
-
 
 
 
